@@ -298,6 +298,55 @@ const PERSONALITY_TEMPLATES = [
     }
 ];
 
+// ===== 关系列表（带标签） =====
+const RELATIONSHIP_LIST = [
+    { id: 'friend',       name: '朋友',         icon: '🤝' },
+    { id: 'bestie',      name: '闺蜜/死党',    icon: '💕' },
+    { id: 'partner',      name: '恋人',         icon: '💗' },
+    { id: 'mentor',      name: '导师',         icon: '📖' },
+    { id: 'assistant',    name: '助手',         icon: '💼' },
+    { id: 'pet',         name: '宠物',         icon: '🐾' },
+    { id: 'laoliu',      name: '老6',          icon: '😏' },
+    { id: 'sunyou',      name: '损友',         icon: '😜' },
+    { id: 'ex',          name: '前任',         icon: '💔' },
+    { id: 'tiangou',     name: '舔狗',         icon: '🐶' },
+    { id: 'boss',        name: '霸道总裁',     icon: '👑' },
+    { id: 'tsundere',    name: '傲娇',         icon: '😤' },
+    { id: 'yandere',     name: '病娇',         icon: '💢' },
+    { id: 'kouhai',      name: '后辈',         icon: '🌱' },
+    { id: 'senpai',      name: '前辈',         icon: '⭐' },
+    { id: 'goodbrother', name: '好哥哥',       icon: '🛡️' },
+    { id: 'goodsister',  name: '好妹妹',       icon: '🌸' },
+    { id: 'adulterer',   name: '地下情人♂',    icon: '🔥' },
+    { id: 'adulteress',  name: '地下情人♀',    icon: '💋' },
+];
+
+// ===== 获取关系列表 =====
+function getRelationshipList() {
+    return RELATIONSHIP_LIST;
+}
+
+// ===== 获取关系标签 =====
+function getRelationshipLabel(id) {
+    const rel = RELATIONSHIP_LIST.find(r => r.id === id);
+    return rel ? rel.name : id;
+}
+
+// ===== 获取关系图标 =====
+function getRelationshipIcon(id) {
+    const rel = RELATIONSHIP_LIST.find(r => r.id === id);
+    return rel ? rel.icon : '💬';
+}
+
+// ===== 获取性格标签（emoji + 名称） =====
+function getPersonalityLabel(id) {
+    const p = PERSONALITY_TEMPLATES.find(p => p.id === id);
+    if (!p) return { icon: '✨', name: '自定义' };
+    const icon = p.name.match(/^([^\u4e00-\u9fa5]+)/)?.[1]?.trim() || '✨';
+    const name = p.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || p.name;
+    return { icon, name };
+}
+
 // ===== 关系提示词 =====
 const RELATIONSHIP_PROMPTS = {
     'friend': '你是用户的朋友，平等、友好、真诚。像好朋友一样聊天，分享快乐，分担忧愁。',
@@ -958,12 +1007,15 @@ class AICompanion {
 
     // ===== 静态方法：性格列表（带 icon） =====
     static getPersonalities() {
-        return PERSONALITY_TEMPLATES.map(p => ({
-            id: p.id,
-            name: p.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || p.name,
-            icon: p.name.match(/^([^\u4e00-\u9fa5]+)/)?.[1]?.trim() || '✨',
-            description: p.description
-        }));
+        return PERSONALITY_TEMPLATES.map(p => {
+            const icon = p.name.match(/^([^\u4e00-\u9fa5]+)/)?.[1]?.trim() || '✨';
+            const name = p.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || p.name;
+            return { id: p.id, name: name, icon: icon, description: p.description };
+        });
+    }
+
+    static getRelationships() {
+        return RELATIONSHIP_LIST;
     }
 
     // ===== 获取问候语 =====
@@ -1063,5 +1115,5 @@ async function initCompanion(sessionId) {
 
 // ===== 导出 =====
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { AICompanion, PERSONALITY_TEMPLATES, RELATIONSHIP_PROMPTS, initCompanion };
+    module.exports = { AICompanion, PERSONALITY_TEMPLATES, RELATIONSHIP_PROMPTS, RELATIONSHIP_LIST, initCompanion };
 }

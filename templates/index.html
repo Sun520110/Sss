@@ -1826,22 +1826,7 @@
                 </div>
                 <div class="form-group">
                     <label>关系定位</label>
-                    <div class="relationship-select">
-                        <div class="relationship-option" data-value="friend" onclick="selectRelationship(this)">朋友</div>
-                        <div class="relationship-option" data-value="bestie" onclick="selectRelationship(this)">闺蜜/死党</div>
-                        <div class="relationship-option" data-value="partner" onclick="selectRelationship(this)">恋人</div>
-                        <div class="relationship-option" data-value="mentor" onclick="selectRelationship(this)">导师</div>
-                        <div class="relationship-option" data-value="assistant" onclick="selectRelationship(this)">助手</div>
-                        <div class="relationship-option" data-value="pet" onclick="selectRelationship(this)">宠物</div>
-                        <div class="relationship-option" data-value="laoliu" onclick="selectRelationship(this)">老6</div>
-                        <div class="relationship-option" data-value="sunyou" onclick="selectRelationship(this)">损友</div>
-                        <div class="relationship-option" data-value="ex" onclick="selectRelationship(this)">前任</div>
-                        <div class="relationship-option" data-value="tiangou" onclick="selectRelationship(this)">舔狗</div>
-                        <div class="relationship-option" data-value="boss" onclick="selectRelationship(this)">霸道总裁</div>
-                        <div class="relationship-option" data-value="tsundere" onclick="selectRelationship(this)">傲娇</div>
-                        <div class="relationship-option" data-value="yandere" onclick="selectRelationship(this)">病娇</div>
-                        <div class="relationship-option" data-value="kouhai" onclick="selectRelationship(this)">后辈</div>
-                        <div class="relationship-option" data-value="senpai" onclick="selectRelationship(this)">前辈</div>
+                    <div class="relationship-select" id="relationshipSelect">
                     </div>
                 </div>
                 <div class="form-group">
@@ -1922,31 +1907,7 @@
                 <h3>AI 性格</h3>
                 <div class="form-group">
                     <div class="card-grid personalities" id="personalityGrid">
-                        <!-- 性格模板动态加载 -->
-                        <div class="card-item selected" data-value="gentle" onclick="selectPersonality(this)">
-                            <span class="card-icon">🌸</span>
-                            <span class="card-label">温柔体贴</span>
-                        </div>
-                        <div class="card-item" data-value="lively" onclick="selectPersonality(this)">
-                            <span class="card-icon">🎉</span>
-                            <span class="card-label">活泼开朗</span>
-                        </div>
-                        <div class="card-item" data-value="intellectual" onclick="selectPersonality(this)">
-                            <span class="card-icon">📚</span>
-                            <span class="card-label">知性优雅</span>
-                        </div>
-                        <div class="card-item" data-value="playful" onclick="selectPersonality(this)">
-                            <span class="card-icon">😜</span>
-                            <span class="card-label">调皮可爱</span>
-                        </div>
-                        <div class="card-item" data-value="calm" onclick="selectPersonality(this)">
-                            <span class="card-icon">🍃</span>
-                            <span class="card-label">沉稳内敛</span>
-                        </div>
-                        <div class="card-item" data-value="romantic" onclick="selectPersonality(this)">
-                            <span class="card-icon">🌹</span>
-                            <span class="card-label">浪漫多情</span>
-                        </div>
+                        <!-- 性格模板由 loadPersonalities() 动态渲染 -->
                     </div>
                 </div>
                 <div class="form-group">
@@ -2170,6 +2131,7 @@
             await companion.initPromise;
             await loadSettings();
             await loadSessions();
+            loadRelationships();
             loadPersonalities();
             loadGreeting();
             loadMemories();
@@ -2414,10 +2376,9 @@
             document.querySelectorAll('.relationship-option').forEach(el => {
                 el.classList.toggle('selected', el.dataset.value === currentSettings.relationship);
             });
-
             // Personality
             document.querySelectorAll('#personalityGrid .card-item').forEach(el => {
-                el.classList.toggle('selected', el.dataset.value === currentSettings.personality);
+                el.classList.toggle('selected', el.dataset.value === currentSettings.personality || el.dataset.value === currentSettings.personality_id);
             });
 
             // Tone
@@ -2660,17 +2621,41 @@
             document.body.style.overflow = isOpen ? '' : 'hidden';
         }
 
+        // ===== 加载关系定位列表 =====
+        function loadRelationships() {
+            const container = document.getElementById('relationshipSelect');
+            if (!container) return;
+            container.innerHTML = '';
+            const list = typeof getRelationshipList === 'function' ? getRelationshipList() : [];
+            list.forEach(rel => {
+                const div = document.createElement('div');
+                div.className = 'relationship-option' + (rel.id === currentSettings.relationship ? ' selected' : '');
+                div.dataset.value = rel.id;
+                div.onclick = function() { selectRelationship(this); };
+                div.textContent = rel.icon ? (rel.icon + ' ' + rel.name) : rel.name;
+                container.appendChild(div);
+            });
+        }
+
         // ===== Load Personalities =====
         function loadPersonalities() {
-            const data = AICompanion.getPersonalities();
             const grid = document.getElementById('personalityGrid');
+            if (!grid) return;
             grid.innerHTML = '';
-            data.forEach(p => {
+
+            const templates = typeof PERSONALITY_TEMPLATES !== 'undefined' ? PERSONALITY_TEMPLATES : [];
+            if (templates.length === 0) return;
+
+            templates.forEach(p => {
+                const icon = p.name.match(/^([^\u4e00-\u9fa5]+)/)?.[1]?.trim() || '✨';
+                const name = p.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || p.name;
+                const isSelected = (p.id === currentSettings.personality || p.id === currentSettings.personality_id);
+
                 const div = document.createElement('div');
-                div.className = 'card-item' + (p.id === currentSettings.personality ? ' selected' : '');
+                div.className = 'card-item' + (isSelected ? ' selected' : '');
                 div.dataset.value = p.id;
                 div.onclick = function() { selectPersonality(this); };
-                div.innerHTML = `<span class="card-icon">${p.icon || '✨'}</span><span class="card-label">${p.name}</span>`;
+                div.innerHTML = `<span class="card-icon">${icon}</span><span class="card-label">${name}</span>`;
                 grid.appendChild(div);
             });
         }
