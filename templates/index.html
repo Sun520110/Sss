@@ -1445,41 +1445,7 @@
             border-radius: 3px;
         }
 
-        .memory-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            padding: 8px 10px;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: var(--radius-sm);
-            margin-bottom: 6px;
-            font-size: 13px;
-            color: var(--panel-text);
-            line-height: 1.4;
-        }
-
-        .memory-item .memory-icon {
-            flex-shrink: 0;
-            font-size: 14px;
-        }
-
-        .memory-item .memory-text {
-            flex: 1;
-        }
-
-        .memory-item .memory-delete {
-            flex-shrink: 0;
-            background: none;
-            border: none;
-            color: rgba(74, 53, 72, 0.3);
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0 2px;
-        }
-
-        .memory-item .memory-delete:hover {
-            color: var(--accent);
-        }
+        /* Memory item styles（合并到使用处 1593行） */
 
         .memory-add {
             display: flex;
@@ -2170,6 +2136,15 @@
         // ===== Global State =====
         let companion = null;
         let sessionId = localStorage.getItem('ai_companion_session_id') || '';
+        let cachedApiKey = '';
+
+        // 设置/获取缓存的API Key（避免每次创建AICompanion实例）
+        function syncApiKey() {
+            if (companion && companion.settings.api_key) {
+                cachedApiKey = companion.settings.api_key;
+            }
+        }
+        function getApiKey() { return cachedApiKey; }
         
         if (!sessionId) {
             sessionId = 'session_' + Date.now();
@@ -2225,6 +2200,7 @@
         async function init() {
             companion = new AICompanion(sessionId);
             await companion.initPromise;
+            syncApiKey();
             await loadSettings();
             await loadSessions();
             loadRelationships();
@@ -2545,11 +2521,12 @@
                 companion.settings.chat_background_style = currentSettings.chat_background_style;
                 companion.settings.chat_background_image = currentSettings.chat_background_image;
                 companion.saveSettings();
+                syncApiKey();
             }
         }
 
         function onSettingChange() {
-            // Debounce save
+             // Debounce save
             clearTimeout(onSettingChange._timer);
             onSettingChange._timer = setTimeout(() => {
                 saveSettings();
@@ -2893,7 +2870,6 @@
             const text = input.value.trim();
             if (!text || isSending || !companion) return;
 
-            // 确保 API Key
             saveSettings();
             if (!companion.settings.api_key) {
                 showToast('请先在设置中配置 DeepSeek API Key');
@@ -2903,58 +2879,63 @@
 
             isSending = true;
             document.getElementById('sendBtn').disabled = true;
-
             const welcome = document.getElementById('welcomeMessage');
             if (welcome) welcome.style.display = 'none';
 
             appendMessage('user', text);
             input.value = '';
             input.style.height = 'auto';
-
             showTyping(true);
+
             const streamingMsgId = 'streaming-' + Date.now();
             createStreamingMessage(streamingMsgId);
 
-            await companion.sendMessage(
-                text,
-                // onChunk
-                (chunk, fullText) => {
-                    updateStreamingMessage(streamingMsgId, fullText, false);
-                    scrollToBottom();
-                },
-                // onDone
-                (fullResponse, emotion) => {
-                    showTyping(false);
-                    // 移除流式消息
-                    const streamingMsg = document.getElementById(streamingMsgId);
-                    if (streamingMsg) {
-                        streamingMsg.remove();
-                    }
+            // 安全计时器：30秒后强制恢复状态
+            const safetyTimer = setTimeout(() => {
+                if (isSending) resetSendState();
+            }, 30000);
 
-                    // 按句子拆分AI回复，逐条延迟发送
-                    const sentences = splitIntoSentences(fullResponse);
-                    if (sentences.length <= 1) {
-                        // 只有一句，直接显示
-                        appendMessage('ai', fullResponse);
-                        finishSending(emotion);
-                    } else {
-                        // 多句：逐条延迟发送
-                        sendSplitMessages(sentences, 0, emotion);
+            try {
+                await companion.sendMessage(
+                    text,
+                    (chunk, fullText) => {
+                        updateStreamingMessage(streamingMsgId, fullText, false);
+                        scrollToBottom();
+                    },
+                    (fullResponse, emotion) => {
+                        clearTimeout(safetyTimer);
+                        showTyping(false);
+                        const sm = document.getElementById(streamingMsgId);
+                        if (sm) sm.remove();
+                        const sentences = splitIntoSentences(fullResponse);
+                        if (sentences.length <= 1) {
+                            appendMessage('ai', fullResponse);
+                            finishSending(emotion);
+                        } else {
+                            sendSplitMessages(sentences, 0, emotion);
+                        }
+                    },
+                    (errorMsg) => {
+                        clearTimeout(safetyTimer);
+                        showTyping(false);
+                        const sm = document.getElementById(streamingMsgId);
+                        if (sm) sm.remove();
+                        appendMessage('ai', errorMsg || '网络好像出了点问题...请稍后再试试吧~ 💕');
+                        resetSendState();
                     }
-                },
-                // onError
-                (errorMsg) => {
-                    showTyping(false);
-                    const streamingMsg = document.getElementById(streamingMsgId);
-                    if (streamingMsg) {
-                        streamingMsg.remove();
-                    }
-                    appendMessage('ai', errorMsg || '网络好像出了点问题...请稍后再试试吧~ 💕');
-                    isSending = false;
-                    document.getElementById('sendBtn').disabled = false;
-                    input.focus();
-                }
-            );
+                );
+            } catch (e) {
+                clearTimeout(safetyTimer);
+                showTyping(false);
+                console.error('sendMessage error:', e);
+                resetSendState();
+            }
+        }
+
+        function resetSendState() {
+            isSending = false;
+            const btn = document.getElementById('sendBtn');
+            if (btn) btn.disabled = false;
         }
 
         // ===== 按句子拆分文本 =====
@@ -2968,6 +2949,8 @@
 
         // ===== 逐条延迟发送拆分消息 =====
         function sendSplitMessages(sentences, index, emotion) {
+            // 如果用户已经开始新消息或离开页面，终止
+            if (!isSending) return;
             if (index >= sentences.length) {
                 finishSending(emotion);
                 return;
@@ -2977,23 +2960,20 @@
             appendMessage('ai', sentence);
             scrollToBottom();
 
-            // 计算延迟：根据句子长度，0.5~1.5秒
-            const delay = Math.min(1500, Math.max(500, sentence.length * 60));
+            // 计算延迟：根据句子长度，0.4~1.2秒
+            const delay = Math.min(1200, Math.max(400, sentence.length * 50));
 
-            // 最后一条前显示"正在输入"
             if (index < sentences.length - 1) {
                 setTimeout(() => {
+                    if (!isSending) return;  // 二次检查
                     showTyping(true);
                     setTimeout(() => {
                         showTyping(false);
                         sendSplitMessages(sentences, index + 1, emotion);
-                    }, Math.min(800, delay * 0.4));
+                    }, Math.min(600, delay * 0.3));
                 }, delay);
             } else {
-                // 最后一条，直接完成
-                setTimeout(() => {
-                    finishSending(emotion);
-                }, 300);
+                setTimeout(() => finishSending(emotion), 200);
             }
         }
 
@@ -3533,9 +3513,7 @@
             if (!text || !currentGroup) return;
 
             // 检查API Key
-            const companion = new AICompanion(sessionId);
-            await companion.initPromise;
-            const apiKey = companion.settings.api_key;
+            const apiKey = getApiKey();
             if (!apiKey) {
                 showToast('请先在私聊设置中配置 DeepSeek API Key');
                 return;
@@ -3574,9 +3552,7 @@
         async function triggerGroupAIChat() {
             if (groupIsSending || !currentGroup) return;
 
-            const companion = new AICompanion(sessionId);
-            await companion.initPromise;
-            const apiKey = companion.settings.api_key;
+            const apiKey = getApiKey();
             if (!apiKey) {
                 showToast('请先配置 API Key');
                 return;

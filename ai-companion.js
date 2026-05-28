@@ -1123,6 +1123,8 @@ class GroupChat {
         this.name = '新群聊';
         this.members = []; // [{sessionId, name, avatar, personality, relationship}]
         this.chatHistory = []; // [{role, senderSessionId, senderName, senderAvatar, content, timestamp}]
+        this._saveTimer = null;   // 去抖器
+        this._dirty = false;      // 脏标记
         this.initialized = false;
         this.initPromise = this.initialize();
     }
@@ -1149,6 +1151,19 @@ class GroupChat {
             members: this.members,
             chatHistory: this.chatHistory
         });
+    }
+
+    // 批量去抖保存：500ms内的多次调用只写一次
+    saveDebounced() {
+        this._dirty = true;
+        if (this._saveTimer) return;
+        this._saveTimer = setTimeout(() => {
+            this._saveTimer = null;
+            if (this._dirty) {
+                this._dirty = false;
+                this.save().catch(e => console.error('GroupChat save error:', e));
+            }
+        }, 500);
     }
 
     addMember(sessionId, info) {
@@ -1211,7 +1226,7 @@ class GroupChat {
             content: userMessage,
             timestamp: new Date().toISOString()
         });
-        await this.save();
+        this.saveDebounced();
         onMessage({ role: 'user', senderName: '我', senderAvatar: '😊', content: userMessage });
 
         // 判断是否@了某人
@@ -1231,7 +1246,7 @@ class GroupChat {
         // 第一个AI回复
         const firstReply = await this._getAIReply(firstResponder, userMessage, apiKey);
         this.chatHistory.push(firstReply);
-        await this.save();
+        this.saveDebounced();
         onMessage({
             role: 'ai',
             senderSessionId: firstResponder.sessionId,
@@ -1249,11 +1264,10 @@ class GroupChat {
             const next = this._pickRandomMember(replied);
             if (!next) break;
 
-            // 构建上下文让AI看到之前的对话
             const context = this._buildContextForAI(next);
             const reply = await this._getAIReply(next, context, apiKey);
             this.chatHistory.push(reply);
-            await this.save();
+            this.saveDebounced();
             onMessage({
                 role: 'ai',
                 senderSessionId: next.sessionId,
@@ -1286,7 +1300,7 @@ class GroupChat {
             const context = this._buildContextForAI(speaker);
             const reply = await this._getAIReply(speaker, context, apiKey);
             this.chatHistory.push(reply);
-            await this.save();
+            this.saveDebounced();
             onMessage({
                 role: 'ai',
                 senderSessionId: speaker.sessionId,
