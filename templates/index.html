@@ -88,6 +88,130 @@
             background: inherit;
         }
 
+        /* ===== 解锁页面 ===== */
+        .unlock-view {
+            z-index: 1000;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .unlock-container {
+            width: 100%;
+            max-width: 340px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: var(--radius-xl);
+            padding: 36px 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .unlock-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--bg-gradient-mid) 0%, var(--bg-gradient-end) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 24px rgba(118, 75, 162, 0.4);
+        }
+
+        .unlock-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--panel-text);
+            margin-bottom: 8px;
+        }
+
+        .unlock-subtitle {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 28px;
+        }
+
+        .unlock-input-wrapper {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .unlock-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 24px;
+            letter-spacing: 8px;
+            text-align: center;
+            border: 2px solid rgba(118, 75, 162, 0.2);
+            border-radius: var(--radius-lg);
+            background: var(--input-bg);
+            color: var(--panel-text);
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .unlock-input:focus {
+            border-color: var(--bg-gradient-end);
+            box-shadow: 0 0 0 4px rgba(118, 75, 162, 0.1);
+        }
+
+        .unlock-input.error {
+            border-color: #f5576c;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .unlock-error {
+            color: #f5576c;
+            font-size: 13px;
+            margin-bottom: 12px;
+            min-height: 20px;
+        }
+
+        .unlock-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, var(--bg-gradient-mid) 0%, var(--bg-gradient-end) 100%);
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(118, 75, 162, 0.4);
+        }
+
+        .unlock-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(118, 75, 162, 0.5);
+        }
+
+        .unlock-btn:active {
+            transform: translateY(0);
+        }
+
+        .unlock-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .unlock-hint {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
         /* ===== 列表页（微信风格） ===== */
         .list-header {
             display: flex;
@@ -1715,8 +1839,23 @@
 </head>
 <body>
     <div id="app">
+        <!-- ===== 解锁页面 ===== -->
+        <div class="view unlock-view" id="unlockView">
+            <div class="unlock-container">
+                <div class="unlock-icon">🔐</div>
+                <div class="unlock-title">欢迎使用</div>
+                <div class="unlock-subtitle">首次使用需要输入解锁码</div>
+                <div class="unlock-input-wrapper">
+                    <input type="password" class="unlock-input" id="unlockCodeInput" maxlength="9" placeholder="•••••••••" inputmode="numeric">
+                </div>
+                <div class="unlock-error" id="unlockError"></div>
+                <button class="unlock-btn" id="unlockBtn" onclick="verifyUnlockCode()">解锁</button>
+                <div class="unlock-hint">请输入解锁码以继续使用</div>
+            </div>
+        </div>
+
         <!-- ===== 视图1：会话列表页（微信风格） ===== -->
-        <div class="view" id="listView">
+        <div class="view" id="listView" style="display: none;">
             <div class="list-header">
                 <div class="list-header-title">AI 伴侣</div>
                 <button class="list-header-btn" onclick="createNewSession()" title="新建助手">
@@ -2133,6 +2272,101 @@
 
     <script src="static/ai-companion.js"></script>
     <script>
+        // ===== Unlock System =====
+        const UNLOCK_CODE = '110120119';
+        const UNLOCK_STORAGE_KEY = 'ai_companion_unlocked';
+        let isUnlocked = false;
+
+        // 检查是否已解锁
+        function checkUnlockStatus() {
+            try {
+                const unlocked = localStorage.getItem(UNLOCK_STORAGE_KEY);
+                if (unlocked === 'true') {
+                    isUnlocked = true;
+                    hideUnlockView();
+                    return true;
+                }
+            } catch (e) {
+                console.error('Check unlock status error:', e);
+            }
+            return false;
+        }
+
+        // 隐藏解锁页面
+        function hideUnlockView() {
+            const unlockView = document.getElementById('unlockView');
+            const listView = document.getElementById('listView');
+            if (unlockView) unlockView.style.display = 'none';
+            if (listView) listView.style.display = 'flex';
+        }
+
+        // 验证解锁码
+        function verifyUnlockCode() {
+            const input = document.getElementById('unlockCodeInput');
+            const errorDiv = document.getElementById('unlockError');
+            const btn = document.getElementById('unlockBtn');
+            const code = input.value.trim();
+
+            if (!code) {
+                showUnlockError('请输入解锁码');
+                return;
+            }
+
+            if (code === UNLOCK_CODE) {
+                // 解锁成功
+                try {
+                    localStorage.setItem(UNLOCK_STORAGE_KEY, 'true');
+                } catch (e) {
+                    console.error('Save unlock status error:', e);
+                }
+                isUnlocked = true;
+                
+                // 动画效果
+                input.style.borderColor = '#4CAF50';
+                errorDiv.textContent = '解锁成功！';
+                errorDiv.style.color = '#4CAF50';
+                btn.disabled = true;
+                btn.textContent = '正在进入...';
+                
+                setTimeout(() => {
+                    hideUnlockView();
+                    initApp();
+                }, 800);
+            } else {
+                // 解锁失败
+                input.classList.add('error');
+                showUnlockError('解锁码错误，请重试');
+                input.value = '';
+                input.focus();
+                
+                setTimeout(() => {
+                    input.classList.remove('error');
+                }, 500);
+            }
+        }
+
+        // 显示解锁错误
+        function showUnlockError(msg) {
+            const errorDiv = document.getElementById('unlockError');
+            errorDiv.textContent = msg;
+            errorDiv.style.color = '#f5576c';
+        }
+
+        // 解锁页面回车键支持
+        document.addEventListener('DOMContentLoaded', function() {
+            const unlockInput = document.getElementById('unlockCodeInput');
+            if (unlockInput) {
+                unlockInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        verifyUnlockCode();
+                    }
+                });
+                
+                // 自动聚焦
+                unlockInput.focus();
+            }
+        });
+
         // ===== Global State =====
         let companion = null;
         let sessionId = localStorage.getItem('ai_companion_session_id') || '';
@@ -2198,6 +2432,15 @@
 
         // ===== Initialization =====
         async function init() {
+            // 先检查解锁状态
+            if (!checkUnlockStatus()) {
+                // 未解锁，等待用户输入解锁码
+                return;
+            }
+            await initApp();
+        }
+
+        async function initApp() {
             companion = new AICompanion(sessionId);
             await companion.initPromise;
             syncApiKey();
