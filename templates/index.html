@@ -2296,9 +2296,13 @@
         function loadChatHistory() {
             if (!companion) return;
             const history = companion.chatHistory;
+            const chatArea = document.getElementById('chatArea');
+            const welcome = document.getElementById('welcomeMessage');
+            
+            // 清空现有消息，防止重复
+            chatArea.innerHTML = '';
+            
             if (history && history.length > 0) {
-                const chatArea = document.getElementById('chatArea');
-                const welcome = document.getElementById('welcomeMessage');
                 if (welcome) welcome.style.display = 'none';
                 
                 const recentHistory = history.slice(-50);
@@ -2310,6 +2314,8 @@
                 });
                 
                 scrollToBottom();
+            } else {
+                if (welcome) welcome.style.display = 'block';
             }
         }
 
@@ -2823,7 +2829,12 @@
                 // onDone
                 (fullResponse, emotion) => {
                     showTyping(false);
-                    updateStreamingMessage(streamingMsgId, fullResponse, true);
+                    // 移除流式消息，添加普通消息
+                    const streamingMsg = document.getElementById(streamingMsgId);
+                    if (streamingMsg) {
+                        streamingMsg.remove();
+                    }
+                    appendMessage('ai', fullResponse);
                     
                     if (emotion && emotion !== 'neutral') {
                         setEmotion(emotion);
@@ -2836,7 +2847,12 @@
                 // onError
                 (errorMsg) => {
                     showTyping(false);
-                    updateStreamingMessage(streamingMsgId, errorMsg || '网络好像出了点问题...请稍后再试试吧~ 💕', true);
+                    // 移除流式消息，添加错误消息
+                    const streamingMsg = document.getElementById(streamingMsgId);
+                    if (streamingMsg) {
+                        streamingMsg.remove();
+                    }
+                    appendMessage('ai', errorMsg || '网络好像出了点问题...请稍后再试试吧~ 💕');
                     isSending = false;
                     document.getElementById('sendBtn').disabled = false;
                     input.focus();
