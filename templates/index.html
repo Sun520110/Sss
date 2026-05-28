@@ -2829,25 +2829,26 @@
                 // onDone
                 (fullResponse, emotion) => {
                     showTyping(false);
-                    // 移除流式消息，添加普通消息
+                    // 移除流式消息
                     const streamingMsg = document.getElementById(streamingMsgId);
                     if (streamingMsg) {
                         streamingMsg.remove();
                     }
-                    appendMessage('ai', fullResponse);
-                    
-                    if (emotion && emotion !== 'neutral') {
-                        setEmotion(emotion);
+
+                    // 按句子拆分AI回复，逐条延迟发送
+                    const sentences = splitIntoSentences(fullResponse);
+                    if (sentences.length <= 1) {
+                        // 只有一句，直接显示
+                        appendMessage('ai', fullResponse);
+                        finishSending(emotion);
+                    } else {
+                        // 多句：逐条延迟发送
+                        sendSplitMessages(sentences, 0, emotion);
                     }
-                    
-                    isSending = false;
-                    document.getElementById('sendBtn').disabled = false;
-                    input.focus();
                 },
                 // onError
                 (errorMsg) => {
                     showTyping(false);
-                    // 移除流式消息，添加错误消息
                     const streamingMsg = document.getElementById(streamingMsgId);
                     if (streamingMsg) {
                         streamingMsg.remove();
@@ -2858,6 +2859,56 @@
                     input.focus();
                 }
             );
+        }
+
+        // ===== 按句子拆分文本 =====
+        function splitIntoSentences(text) {
+            if (!text || text.length < 10) return [text];
+            // 按中英文标点拆分，保留标点
+            const parts = text.match(/[^。！？.!?\n]+[。！？.!?\n]?/g) || [text];
+            // 过滤空字符串
+            return parts.map(s => s.trim()).filter(s => s.length > 0);
+        }
+
+        // ===== 逐条延迟发送拆分消息 =====
+        function sendSplitMessages(sentences, index, emotion) {
+            if (index >= sentences.length) {
+                finishSending(emotion);
+                return;
+            }
+
+            const sentence = sentences[index];
+            appendMessage('ai', sentence);
+            scrollToBottom();
+
+            // 计算延迟：根据句子长度，0.5~1.5秒
+            const delay = Math.min(1500, Math.max(500, sentence.length * 60));
+
+            // 最后一条前显示"正在输入"
+            if (index < sentences.length - 1) {
+                setTimeout(() => {
+                    showTyping(true);
+                    setTimeout(() => {
+                        showTyping(false);
+                        sendSplitMessages(sentences, index + 1, emotion);
+                    }, Math.min(800, delay * 0.4));
+                }, delay);
+            } else {
+                // 最后一条，直接完成
+                setTimeout(() => {
+                    finishSending(emotion);
+                }, 300);
+            }
+        }
+
+        // ===== 发送完成后的收尾工作 =====
+        function finishSending(emotion) {
+            if (emotion && emotion !== 'neutral') {
+                setEmotion(emotion);
+            }
+            isSending = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('messageInput').focus();
         }
 
         function createStreamingMessage(id) {
