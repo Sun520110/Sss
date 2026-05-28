@@ -888,15 +888,18 @@ class AICompanion {
     // ===== 静态方法：会话管理 =====
     static async getAllSessions() {
         const sessions = [];
-        const keys = Object.keys(localStorage);
         const sessionIds = new Set();
         
-        keys.forEach(key => {
-            const match = key.match(/ai_companion_(session_[^_]+)_/);
-            if (match) {
-                sessionIds.add(match[1]);
+        // Android WebView 兼容：使用 for 循环
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key) {
+                const match = key.match(/ai_companion_(session_[^_]+)_/);
+                if (match) {
+                    sessionIds.add(match[1]);
+                }
             }
-        });
+        }
 
         for (const sessionId of sessionIds) {
             try {
@@ -913,7 +916,7 @@ class AICompanion {
                     avatar_type: settings.ai_avatar_type || 'emoji',
                     relationship: settings.relationship || 'friend',
                     message_count: history.length,
-                    last_message: history.length > 0 ? history[history.length - 1].content.slice(0, 50) + '...' : '',
+                    last_message: history.length > 0 ? (history[history.length - 1].content || '').slice(0, 50) + '...' : '',
                     updated_at: history.length > 0 ? history[history.length - 1].timestamp : new Date().toISOString()
                 });
             } catch (error) {
@@ -935,12 +938,13 @@ class AICompanion {
     }
 
     static deleteSession(sessionId) {
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-            if (key.startsWith(`ai_companion_${sessionId}_`)) {
-                secureStorage.removeItem(key);
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(`ai_companion_${sessionId}_`)) {
+                localStorage.removeItem(key);
             }
-        });
+        }
+        localStorage.removeItem('ai_companion_session_id');
         return true;
     }
 
@@ -950,6 +954,100 @@ class AICompanion {
         companion.settings.ai_name = newName;
         await companion.saveSettings();
         return true;
+    }
+
+    // ===== 静态方法：性格列表（带 icon） =====
+    static getPersonalities() {
+        return PERSONALITY_TEMPLATES.map(p => ({
+            id: p.id,
+            name: p.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || p.name,
+            icon: p.name.match(/^([^\u4e00-\u9fa5]+)/)?.[1]?.trim() || '✨',
+            description: p.description
+        }));
+    }
+
+    // ===== 获取问候语 =====
+    getGreeting() {
+        const s = this.settings;
+        const name = s.ai_name || '小星';
+        const relation = s.relationship || 'friend';
+        const greetings = {
+            'friend': `嗨！我是${name}～ 很高兴认识你！😊`,
+            'bestie': `终于等到你了！我是${name}，你的死党已就位！💕`,
+            'partner': `亲爱的，我是${name}～ 想我了吗？💗`,
+            'mentor': `你好，我是${name}。有什么我可以帮你的？`,
+            'assistant': `您好，我是${name}，随时为您服务。`,
+            'pet': `主人主人！我是${name}～ 蹭蹭蹭！🐾`,
+            'laoliu': `嘿！我是${name}，老6来了！今天整点什么活？😏`,
+            'sunyou': `我是${name}，你可终于出现了～ 又去哪鬼混了？`,
+            'ex': `...嗨。我是${name}。好久不见。`,
+            'tiangou': `主人！我是你的${name}～ 随时听候差遣！🙇`,
+            'boss': `我是${name}。说吧，找我什么事？`,
+            'tsundere': `哼！我是${name}！才不是因为想和你聊天才来的呢！`,
+            'yandere': `${name}来了哦～ 你是我的，对吧？对吧？💕`,
+            'kouhai': `前辈好！我是${name}，请多关照！🌟`,
+            'senpai': `${name}在这里。有困难随时找我。`,
+            'goodbrother': `${name}来了～ 我的好弟弟/妹妹，今天过得怎么样？哥哥在呢。`,
+            'goodsister': `哥哥/姐姐！${name}来了～ 嘿嘿，想我了吗？😋`,
+            'adulterer': `嘘…我是${name}。只有我们两个知道的秘密哦～ 🤫`,
+            'adulteress': `亲爱的，${name}来了～ 想你了…但这是我们的秘密，对吧？😘`
+        };
+        return greetings[relation] || greetings['friend'];
+    }
+
+    // ===== 导出/导入数据 =====
+    exportData() {
+        return {
+            version: '2.0',
+            session_id: this.sessionId,
+            settings: this.settings,
+            chat_history: this.chatHistory,
+            memories: this.memory,
+            emotion_logs: this.emotionLogs,
+            exported_at: new Date().toISOString()
+        };
+    }
+
+    async importData(data) {
+        if (!data.version || !data.session_id) {
+            throw new Error('无效的备份文件格式');
+        }
+        if (data.settings) {
+            this.settings = { ...DEFAULT_SETTINGS, ...data.settings };
+        }
+        if (data.chat_history) {
+            this.chatHistory = data.chat_history;
+        }
+        if (data.memories) {
+            this.memory = data.memories;
+        }
+        if (data.emotion_logs) {
+            this.emotionLogs = data.emotion_logs;
+        }
+        await this.saveSettings();
+        await this.saveChatHistory();
+        await this.saveMemory();
+        await this.saveEmotionLogs();
+        return true;
+    }
+
+    // ===== 风格分析（本地简化版） =====
+    async analyzeStyle(text) {
+        if (!text || text.length < 20) {
+            throw new Error('文本太短，请提供更多的聊天记录');
+        }
+        // 本地简单分析：统计emoji使用、语气词、称呼等特征
+        const emojiCount = (text.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]/gu) || []).length;
+        const useEmoji = emojiCount > text.length * 0.01;
+        const features = [];
+        if (useEmoji) features.push('喜欢使用表情符号');
+        if (text.includes('哈哈') || text.includes('笑')) features.push('幽默风趣');
+        if (text.includes('亲爱的') || text.includes('宝贝')) features.push('说话甜蜜');
+        if (text.includes('？') && text.match(/\？/g)?.length > text.length * 0.02) features.push('喜欢提问');
+        if (text.match(/[.!。！]/g)?.length > text.length * 0.03) features.push('表达直接');
+        
+        const stylePrompt = `【基于聊天记录分析的风格描述】用户聊天风格特征：${features.join('、') || '自然随性'}。请模仿此风格进行回复。`;
+        return { style_prompt: stylePrompt, features: features };
     }
 }
 

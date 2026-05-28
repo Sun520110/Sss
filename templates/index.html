@@ -1922,7 +1922,7 @@
                 <h3>AI 性格</h3>
                 <div class="form-group">
                     <div class="card-grid personalities" id="personalityGrid">
-                        <!-- Loaded dynamically from /api/personalities -->
+                        <!-- 性格模板动态加载 -->
                         <div class="card-item selected" data-value="gentle" onclick="selectPersonality(this)">
                             <span class="card-icon">🌸</span>
                             <span class="card-label">温柔体贴</span>
@@ -2108,9 +2108,12 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <script src="static/ai-companion.js"></script>
     <script>
         // ===== Global State =====
-        let sessionId = localStorage.getItem('ai_companion_session_id');
+        let companion = null;
+        let sessionId = localStorage.getItem('ai_companion_session_id') || '';
+        
         if (!sessionId) {
             sessionId = 'session_' + Date.now();
             localStorage.setItem('ai_companion_session_id', sessionId);
@@ -2162,9 +2165,11 @@
         };
 
         // ===== Initialization =====
-        function init() {
-            loadSettings();
-            loadSessions();
+        async function init() {
+            companion = new AICompanion(sessionId);
+            await companion.initPromise;
+            await loadSettings();
+            await loadSessions();
             loadPersonalities();
             loadGreeting();
             loadMemories();
@@ -2172,15 +2177,13 @@
         }
 
         // ===== 会话列表管理 =====
-        function loadSessions() {
-            fetch('/api/sessions')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.sessions) {
-                        renderSessionList(data.sessions);
-                    }
-                })
-                .catch(err => console.error('Failed to load sessions:', err));
+        async function loadSessions() {
+            try {
+                const sessions = await AICompanion.getAllSessions();
+                renderSessionList(sessions);
+            } catch(err) {
+                console.error('Failed to load sessions:', err);
+            }
         }
 
         function renderSessionList(sessions) {
@@ -2234,30 +2237,19 @@
             });
         }
 
-        function createNewSession() {
+        async function createNewSession() {
             const name = prompt('给新助手起个名字：', '新助手');
             if (!name) return;
 
-            fetch('/api/sessions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ai_name: name,
-                    api_key: currentSettings.api_key || ''
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    switchSession(data.session_id);
-                    loadSessions();
-                    showToast('新助手创建成功！');
-                }
-            })
-            .catch(err => {
+            try {
+                const newId = await AICompanion.createSession(name);
+                await switchSession(newId);
+                await loadSessions();
+                showToast('新助手创建成功！');
+            } catch(err) {
                 console.error('Failed to create session:', err);
                 showToast('创建失败');
-            });
+            }
         }
 
         // ===== 视图导航 =====
@@ -2271,134 +2263,106 @@
             document.getElementById('chatView').style.display = 'flex';
         }
 
-        function goBackToList() {
+        async function goBackToList() {
             saveSettings();
             showListView();
-            loadSessions();
+            await loadSessions();
         }
 
-        function switchSession(newSessionId) {
+        async function switchSession(newSessionId) {
             if (newSessionId === sessionId) {
-                // 已经在当前会话，直接显示聊天页
                 showChatView();
                 return;
             }
 
-            // 先保存当前会话设置
             saveSettings();
 
-            // 切换 sessionId
             sessionId = newSessionId;
             localStorage.setItem('ai_companion_session_id', sessionId);
 
-            // 重置当前状态（防止角色数据混合）
             currentSettings = { ...defaultSettings };
             currentEmotion = '';
             isSending = false;
 
-            // 清空聊天区域
             const chatArea = document.getElementById('chatArea');
             chatArea.innerHTML = '';
 
-            // 切换到聊天视图
-            showChatView();
+            companion = new AICompanion(sessionId);
+            await companion.initPromise;
 
-            // 从服务器加载该角色的独立数据
-            loadSettings();
+            showChatView();
+            await loadSettings();
             loadChatHistory();
             loadMemories();
         }
 
-        function deleteSession(id) {
+        async function deleteSession(id) {
             if (!confirm('确定要删除这个助手吗？所有聊天记录将丢失！')) return;
 
-            fetch(`/api/sessions/${id}`, { method: 'DELETE' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        if (id === sessionId) {
-                            // 删除的是当前会话，回到列表页
-                            showListView();
-                        }
-                        loadSessions();
-                        showToast('助手已删除');
-                    }
-                })
-                .catch(err => {
-                    console.error('Failed to delete session:', err);
-                    showToast('删除失败');
-                });
+            try {
+                AICompanion.deleteSession(id);
+                if (id === sessionId) {
+                    showListView();
+                }
+                await loadSessions();
+                showToast('助手已删除');
+            } catch(err) {
+                console.error('Failed to delete session:', err);
+                showToast('删除失败');
+            }
         }
 
-        function renameSession(id, currentName) {
+        async function renameSession(id, currentName) {
             const newName = prompt('输入新名字：', currentName);
             if (!newName || newName === currentName) return;
 
-            fetch(`/api/sessions/${id}/rename`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newName })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    if (id === sessionId) {
-                        currentSettings.ai_name = newName;
-                        updateHeaderDisplay();
-                    }
-                    loadSessions();
-                    showToast('重命名成功');
+            try {
+                await AICompanion.renameSession(id, newName);
+                if (id === sessionId) {
+                    currentSettings.ai_name = newName;
+                    updateHeaderDisplay();
                 }
-            })
-            .catch(err => {
+                await loadSessions();
+                showToast('重命名成功');
+            } catch(err) {
                 console.error('Failed to rename session:', err);
                 showToast('重命名失败');
-            });
+            }
         }
 
-        // ===== 加载服务器保存的聊天记录 =====
+        // ===== 加载本地聊天记录 =====
         function loadChatHistory() {
-            fetch(`/api/chat/history/${sessionId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.history && data.history.length > 0) {
-                        const chatArea = document.getElementById('chatArea');
-                        const welcome = document.getElementById('welcomeMessage');
-                        if (welcome) welcome.style.display = 'none';
-                        
-                        // 只显示最近的50条消息
-                        const recentHistory = data.history.slice(-50);
-                        recentHistory.forEach(msg => {
-                            if (msg.role === 'user' || msg.role === 'assistant') {
-                                const role = msg.role === 'assistant' ? 'ai' : msg.role;
-                                appendMessage(role, msg.content, msg.timestamp);
-                            }
-                        });
-                        
-                        scrollToBottom();
+            if (!companion) return;
+            const history = companion.chatHistory;
+            if (history && history.length > 0) {
+                const chatArea = document.getElementById('chatArea');
+                const welcome = document.getElementById('welcomeMessage');
+                if (welcome) welcome.style.display = 'none';
+                
+                const recentHistory = history.slice(-50);
+                recentHistory.forEach(msg => {
+                    if (msg.role === 'user' || msg.role === 'assistant') {
+                        const role = msg.role === 'assistant' ? 'ai' : msg.role;
+                        appendMessage(role, msg.content, msg.timestamp);
                     }
-                })
-                .catch(err => {
-                    console.error('Failed to load chat history:', err);
                 });
+                
+                scrollToBottom();
+            }
         }
 
         // ===== Settings =====
-        function loadSettings() {
-            // 从服务器按 sessionId 加载该角色的独立设置
-            fetch(`/api/settings/${sessionId}`)
-                .then(res => res.json())
-                .then(data => {
-                    // 用服务器数据完全覆盖 currentSettings（确保角色独立）
-                    currentSettings = { ...defaultSettings, ...data };
-                    applySettingsToUI();
-                    updateHeaderDisplay();
-                })
-                .catch(err => {
-                    console.error('Failed to load settings from server:', err);
-                    applySettingsToUI();
-                    updateHeaderDisplay();
-                });
+        async function loadSettings() {
+            if (!companion) return;
+            try {
+                currentSettings = { ...defaultSettings, ...companion.settings };
+                applySettingsToUI();
+                updateHeaderDisplay();
+            } catch(err) {
+                console.error('Failed to load settings:', err);
+                applySettingsToUI();
+                updateHeaderDisplay();
+            }
         }
 
         function applySettingsToUI() {
@@ -2497,14 +2461,28 @@
 
             updateHeaderDisplay();
 
-            // 保存到服务器（按 sessionId 隔离）
-            fetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: sessionId, ...currentSettings })
-            }).then(() => {
-                loadSessions();
-            }).catch(err => console.error('Failed to save settings to server:', err));
+            if (companion) {
+                // 映射到 companion 的字段名
+                companion.settings.api_key = currentSettings.api_key;
+                companion.settings.model = currentSettings.model;
+                companion.settings.personality_id = currentSettings.personality;
+                companion.settings.custom_prompt = currentSettings.custom_prompt;
+                companion.settings.tone = currentSettings.tone;
+                companion.settings.response_length = currentSettings.reply_length;
+                companion.settings.use_emojis = currentSettings.use_emoji;
+                companion.settings.ai_name = currentSettings.ai_name;
+                companion.settings.ai_gender = currentSettings.ai_gender;
+                companion.settings.ai_avatar = currentSettings.ai_avatar;
+                companion.settings.ai_avatar_type = currentSettings.ai_avatar_type;
+                companion.settings.relationship = currentSettings.relationship;
+                companion.settings.user_name = currentSettings.user_nickname;
+                companion.settings.user_avatar = currentSettings.user_avatar;
+                companion.settings.user_avatar_type = currentSettings.user_avatar_type;
+                companion.settings.chat_background = currentSettings.chat_background;
+                companion.settings.chat_background_style = currentSettings.chat_background_style;
+                companion.settings.chat_background_image = currentSettings.chat_background_image;
+                companion.saveSettings();
+            }
         }
 
         function onSettingChange() {
@@ -2684,66 +2662,34 @@
 
         // ===== Load Personalities =====
         function loadPersonalities() {
-            fetch('/api/personalities')
-                .then(res => res.json())
-                .then(data => {
-                    if (data && Array.isArray(data)) {
-                        const grid = document.getElementById('personalityGrid');
-                        grid.innerHTML = '';
-                        data.forEach(p => {
-                            const div = document.createElement('div');
-                            div.className = 'card-item' + (p.id === currentSettings.personality ? ' selected' : '');
-                            div.dataset.value = p.id;
-                            div.onclick = function() { selectPersonality(this); };
-                            div.innerHTML = `<span class="card-icon">${p.icon || '✨'}</span><span class="card-label">${p.name}</span>`;
-                            grid.appendChild(div);
-                        });
-                    }
-                })
-                .catch(err => {
-                    console.error('Failed to load personalities:', err);
-                    // Keep default personalities
-                });
+            const data = AICompanion.getPersonalities();
+            const grid = document.getElementById('personalityGrid');
+            grid.innerHTML = '';
+            data.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'card-item' + (p.id === currentSettings.personality ? ' selected' : '');
+                div.dataset.value = p.id;
+                div.onclick = function() { selectPersonality(this); };
+                div.innerHTML = `<span class="card-icon">${p.icon || '✨'}</span><span class="card-label">${p.name}</span>`;
+                grid.appendChild(div);
+            });
         }
 
         // ===== Load Greeting =====
         function loadGreeting() {
-            fetch(`/api/greeting/${sessionId}`)
-                .then(res => res.json())
-                .then(data => {
-                    const text = data.greeting || data.message || data.text || '你好呀~ 很高兴见到你！';
-                    document.getElementById('welcomeText').textContent = text;
-                })
-                .catch(err => {
-                    console.error('Failed to load greeting:', err);
-                    // Keep default greeting
-                });
+            if (!companion) return;
+            const text = companion.getGreeting();
+            document.getElementById('welcomeText').textContent = text;
         }
 
         // ===== Load Memories =====
         let allMemories = { facts: [], preferences: [], events: [], emotions: [] };
 
         function loadMemories() {
-            fetch(`/api/memory/${sessionId}`)
-                .then(res => res.json())
-                .then(data => {
-                    // 处理新的记忆格式
-                    allMemories = {
-                        facts: data.facts || [],
-                        preferences: data.preferences || [],
-                        events: data.events || [],
-                        emotions: data.emotions || []
-                    };
-                    
-                    // 更新计数
-                    updateMemoryCounts();
-                    
-                    // 显示当前类型的记忆
-                    displayMemories(currentMemoryType);
-                })
-                .catch(err => {
-                    console.error('Failed to load memories:', err);
-                });
+            if (!companion) return;
+            allMemories = companion.memory || { facts: [], preferences: [], events: [], emotions: [] };
+            updateMemoryCounts();
+            displayMemories(currentMemoryType);
         }
 
         function updateMemoryCounts() {
@@ -2792,78 +2738,54 @@
             displayMemories(currentMemoryType);
         }
 
-        function addMemory() {
+        async function addMemory() {
             const input = document.getElementById('memoryInput');
             const content = input.value.trim();
-            if (!content) return;
+            if (!content || !companion) return;
 
-            fetch(`/api/memory/${sessionId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'add',
-                    category: currentMemoryType, 
-                    content: content 
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
+            try {
+                await companion.addMemory(currentMemoryType, content);
                 input.value = '';
-                allMemories = data.memory || allMemories;
+                allMemories = companion.memory;
                 updateMemoryCounts();
                 displayMemories(currentMemoryType);
                 showToast('记忆已添加');
-            })
-            .catch(err => {
+            } catch(err) {
                 console.error('Failed to add memory:', err);
                 showToast('添加失败，请重试');
-            });
+            }
         }
 
-        function deleteMemory(category, index) {
+        async function deleteMemory(category, index) {
             if (!confirm('确定要删除这条记忆吗？')) return;
+            if (!companion) return;
 
-            fetch(`/api/memory/${sessionId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'delete',
-                    category: category,
-                    index: index
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                allMemories = data.memory || allMemories;
+            try {
+                await companion.deleteMemory(category, index);
+                allMemories = companion.memory;
                 updateMemoryCounts();
                 displayMemories(currentMemoryType);
                 showToast('记忆已删除');
-            })
-            .catch(err => {
+            } catch(err) {
                 console.error('Failed to delete memory:', err);
                 showToast('删除失败');
-            });
+            }
         }
 
-        function clearAllMemories() {
+        async function clearAllMemories() {
             if (!confirm('确定要清空所有记忆吗？此操作不可恢复！')) return;
-            
-            fetch(`/api/memory/${sessionId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'clear_all' })
-            })
-            .then(res => res.json())
-            .then(data => {
+            if (!companion) return;
+
+            try {
+                await companion.clearAllMemory();
                 allMemories = { facts: [], preferences: [], events: [], emotions: [] };
                 updateMemoryCounts();
                 displayMemories(currentMemoryType);
                 showToast('所有记忆已清空');
-            })
-            .catch(err => {
+            } catch(err) {
                 console.error('Failed to clear memories:', err);
                 showToast('清空失败');
-            });
+            }
         }
 
         // ===== Chat =====
@@ -2882,106 +2804,59 @@
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
-            if (!text || isSending) return;
+            if (!text || isSending || !companion) return;
+
+            // 确保 API Key
+            saveSettings();
+            if (!companion.settings.api_key) {
+                showToast('请先在设置中配置 DeepSeek API Key');
+                toggleSettings();
+                return;
+            }
 
             isSending = true;
             document.getElementById('sendBtn').disabled = true;
 
-            // Hide welcome message
             const welcome = document.getElementById('welcomeMessage');
             if (welcome) welcome.style.display = 'none';
 
-            // Add user message
             appendMessage('user', text);
             input.value = '';
             input.style.height = 'auto';
 
-            // Show typing indicator
             showTyping(true);
-
-            // Create streaming message container
             const streamingMsgId = 'streaming-' + Date.now();
             createStreamingMessage(streamingMsgId);
 
-            try {
-                const response = await fetch('/api/chat/stream', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        message: text,
-                        settings: currentSettings
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('HTTP error! status: ' + response.status);
-                }
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let fullResponse = '';
-                let buffer = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n\n');
-                    buffer = lines.pop() || '';
-
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.slice(6));
-
-                                if (data.error) {
-                                    showTyping(false);
-                                    updateStreamingMessage(streamingMsgId, '抱歉，出错了: ' + data.error, true);
-                                    isSending = false;
-                                    document.getElementById('sendBtn').disabled = false;
-                                    return;
-                                }
-
-                                if (data.chunk) {
-                                    fullResponse = data.full_text;
-                                    updateStreamingMessage(streamingMsgId, fullResponse, false);
-                                    scrollToBottom();
-                                }
-
-                                if (data.done) {
-                                    showTyping(false);
-                                    updateStreamingMessage(streamingMsgId, data.full_text || fullResponse, true);
-
-                                    // Handle emotion
-                                    if (data.emotion && data.emotion !== 'neutral') {
-                                        setEmotion(data.emotion);
-                                        fetch(`/api/emotion/${sessionId}`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ emotion: data.emotion })
-                                        }).catch(err => console.error('Failed to record emotion:', err));
-                                    }
-
-                                    isSending = false;
-                                    document.getElementById('sendBtn').disabled = false;
-                                    input.focus();
-                                }
-                            } catch (e) {
-                                console.error('Parse error:', e);
-                            }
-                        }
+            await companion.sendMessage(
+                text,
+                // onChunk
+                (chunk, fullText) => {
+                    updateStreamingMessage(streamingMsgId, fullText, false);
+                    scrollToBottom();
+                },
+                // onDone
+                (fullResponse, emotion) => {
+                    showTyping(false);
+                    updateStreamingMessage(streamingMsgId, fullResponse, true);
+                    
+                    if (emotion && emotion !== 'neutral') {
+                        setEmotion(emotion);
                     }
+                    
+                    isSending = false;
+                    document.getElementById('sendBtn').disabled = false;
+                    input.focus();
+                },
+                // onError
+                (errorMsg) => {
+                    showTyping(false);
+                    updateStreamingMessage(streamingMsgId, errorMsg || '网络好像出了点问题...请稍后再试试吧~ 💕', true);
+                    isSending = false;
+                    document.getElementById('sendBtn').disabled = false;
+                    input.focus();
                 }
-            } catch (err) {
-                console.error('Chat error:', err);
-                showTyping(false);
-                updateStreamingMessage(streamingMsgId, '网络好像出了点问题...请稍后再试试吧~ 💕', true);
-                isSending = false;
-                document.getElementById('sendBtn').disabled = false;
-                input.focus();
-            }
+            );
         }
 
         function createStreamingMessage(id) {
@@ -3204,9 +3079,9 @@
             updateContentStats(e.target.value);
         });
 
-        function analyzeStyle() {
+        async function analyzeStyle() {
             const text = document.getElementById('styleText').value.trim();
-            if (!text) {
+            if (!text || !companion) {
                 showToast('请先粘贴聊天记录或上传文件');
                 return;
             }
@@ -3215,139 +3090,86 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span> 分析中...';
 
-            // 使用 FormData 支持文件上传
-            const formData = new FormData();
-            formData.append('session_id', sessionId);
-            formData.append('content', text);
-            
-            // 如果有文件且内容来自文件，也附加文件
-            if (selectedFile && text === document.getElementById('styleText').value) {
-                formData.append('file', selectedFile);
-            }
-
-            fetch('/api/upload_style', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(data.message || '风格分析完成！');
-                    if (data.style_prompt) {
-                        document.getElementById('customPrompt').value = data.style_prompt;
-                        currentSettings.custom_prompt = data.style_prompt;
-                        currentSettings.personality_id = 'custom';
-                        saveSettings();
-                        
-                        // 显示分析特征
-                        if (data.features) {
-                            console.log('分析特征:', data.features);
-                        }
-                    }
-                } else {
-                    showToast(data.error || '分析失败');
+            try {
+                const result = await companion.analyzeStyle(text);
+                showToast('风格分析完成！');
+                if (result.style_prompt) {
+                    document.getElementById('customPrompt').value = result.style_prompt;
+                    currentSettings.custom_prompt = result.style_prompt;
+                    currentSettings.personality = 'custom';
+                    saveSettings();
                 }
-            })
-            .catch(err => {
+                if (result.features) {
+                    console.log('分析特征:', result.features);
+                }
+            } catch(err) {
                 console.error('Style analysis error:', err);
-                showToast('分析失败，请重试');
-            })
-            .finally(() => {
+                showToast('分析失败：' + (err.message || '请重试'));
+            } finally {
                 btn.disabled = false;
                 btn.innerHTML = '🔮 分析我的风格';
-            });
+            }
         }
 
         // ===== Export Chat History (Full Data) =====
         function exportChatHistory() {
-            // 从后端获取完整数据
-            fetch(`/api/export/${sessionId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.error) {
-                        showToast('导出失败: ' + data.error);
-                        return;
-                    }
-                    
-                    // 生成文件名
-                    const date = new Date();
-                    const dateStr = date.getFullYear() + '-' + 
-                                   String(date.getMonth() + 1).padStart(2, '0') + '-' + 
-                                   String(date.getDate()).padStart(2, '0');
-                    const filename = `ai-companion-backup-${dateStr}.json`;
-                    
-                    // 创建下载
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    
-                    showToast(`已导出 ${data.chat_history?.length || 0} 条聊天记录！`);
-                })
-                .catch(err => {
-                    console.error('Export error:', err);
-                    showToast('导出失败，请重试');
-                });
+            if (!companion) return;
+            const data = companion.exportData();
+            
+            const date = new Date();
+            const dateStr = date.getFullYear() + '-' + 
+                           String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                           String(date.getDate()).padStart(2, '0');
+            const filename = `ai-companion-backup-${dateStr}.json`;
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast(`已导出 ${data.chat_history?.length || 0} 条聊天记录！`);
         }
 
         // ===== Import Chat History =====
         function importChatHistory() {
+            if (!companion) return;
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
             
-            input.onchange = (e) => {
+            input.onchange = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 
                 const reader = new FileReader();
-                reader.onload = (event) => {
+                reader.onload = async (event) => {
                     try {
                         const data = JSON.parse(event.target.result);
                         
-                        // 验证数据格式
                         if (!data.version || !data.session_id) {
                             showToast('无效的备份文件格式');
                             return;
                         }
                         
-                        // 确认导入
                         if (!confirm(`确定要导入此备份吗？\n\n包含：\n- ${data.chat_history?.length || 0} 条聊天记录\n- ${Object.keys(data.memories || {}).reduce((sum, k) => sum + (data.memories[k]?.length || 0), 0)} 条记忆\n- AI角色设置\n\n注意：这将覆盖当前的数据！`)) {
                             return;
                         }
                         
-                        // 发送到后端
-                        fetch(`/api/import/${sessionId}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(data)
-                        })
-                        .then(res => res.json())
-                        .then(result => {
-                            if (result.success) {
-                                showToast(result.message);
-                                
-                                // 刷新页面以应用新数据
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1500);
-                            } else {
-                                showToast('导入失败: ' + result.error);
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Import error:', err);
-                            showToast('导入失败，请重试');
-                        });
+                        await companion.importData(data);
+                        showToast('导入成功！');
                         
-                    } catch (err) {
-                        console.error('Parse error:', err);
-                        showToast('文件解析失败，请确保是有效的JSON文件');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                        
+                    } catch(err) {
+                        console.error('Import error:', err);
+                        showToast('导入失败: ' + (err.message || '请重试'));
                     }
                 };
                 reader.readAsText(file);
