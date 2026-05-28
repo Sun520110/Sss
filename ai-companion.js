@@ -384,10 +384,9 @@ const TONE_INSTRUCTIONS = {
 
 // ===== 长度映射 =====
 const LENGTH_INSTRUCTIONS = {
-    'short': '请尽量简洁回复，控制在100字以内。',
-    'medium': '请提供适中长度的回复，控制在300字以内。',
-    'long': '请提供详细完整的回复。',
-    'auto': '根据问题的复杂程度，自动调整回复长度。'
+    'short': '【重要】回复必须简短，每条控制在30字以内。像真人微信聊天一样，一两句话就说清楚，不要啰嗦。',
+    'medium': '回复适中，每条控制在80字以内。像朋友微信聊天那样，自然流畅。',
+    'long': '回复详细完整，每条控制在200字以内。适当展开说明。'
 };
 
 // ===== 默认设置 =====
@@ -397,7 +396,7 @@ const DEFAULT_SETTINGS = {
     'personality_id': 'default',
     'custom_prompt': '',
     'tone': 'gentle',
-    'response_length': 'medium',
+    'response_length': 'short',
     'use_emojis': true,
     'ai_name': '小星',
     'ai_gender': 'female',
@@ -718,6 +717,10 @@ class AICompanion {
         }
 
         const model = this.settings.model || 'deepseek-v4-flash';
+        const responseLength = this.settings.response_length || 'short';
+        // 根据回复长度设置 token 上限（中文约 1 字 ≈ 1-1.5 token）
+        const maxTokensMap = { short: 150, medium: 350, long: 800 };
+        const maxTokens = maxTokensMap[responseLength] || 150;
         const systemPrompt = this.buildSystemPrompt(userMessage);
 
         // 添加用户消息到历史
@@ -746,7 +749,7 @@ class AICompanion {
                     model: model,
                     messages: messages,
                     temperature: 0.8,
-                    max_tokens: 2000,
+                    max_tokens: maxTokens,
                     stream: true
                 })
             });

@@ -1959,21 +1959,17 @@
             <div class="settings-section">
                 <h3>回复长度</h3>
                 <div class="card-grid" id="lengthGrid">
-                    <div class="card-item" data-value="concise" onclick="selectLength(this)">
+                    <div class="card-item selected" data-value="short" onclick="selectLength(this)">
                         <span class="card-icon">📝</span>
-                        <span class="card-label">简洁</span>
+                        <span class="card-label">简短 · 30字</span>
                     </div>
-                    <div class="card-item selected" data-value="moderate" onclick="selectLength(this)">
+                    <div class="card-item" data-value="medium" onclick="selectLength(this)">
+                        <span class="card-icon">💬</span>
+                        <span class="card-label">适中 · 80字</span>
+                    </div>
+                    <div class="card-item" data-value="long" onclick="selectLength(this)">
                         <span class="card-icon">📄</span>
-                        <span class="card-label">适中</span>
-                    </div>
-                    <div class="card-item" data-value="detailed" onclick="selectLength(this)">
-                        <span class="card-icon">📑</span>
-                        <span class="card-label">详细</span>
-                    </div>
-                    <div class="card-item" data-value="auto" onclick="selectLength(this)">
-                        <span class="card-icon">🔄</span>
-                        <span class="card-label">自动</span>
+                        <span class="card-label">详细 · 200字</span>
                     </div>
                 </div>
             </div>
@@ -2095,7 +2091,7 @@
             personality: 'gentle',
             custom_prompt: '',
             tone: 'peaceful',
-            reply_length: 'moderate',
+            reply_length: 'short',
             use_emoji: true,
             style_text: '',
             chat_background: 'default',
