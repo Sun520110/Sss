@@ -556,6 +556,54 @@
             color: rgba(74, 53, 72, 0.4);
         }
 
+        /* ===== 群聊消息样式 ===== */
+        .message.group-ai {
+            align-items: flex-start;
+        }
+        .message.group-ai .msg-avatar {
+            font-size: 22px;
+            width: 34px;
+            height: 34px;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .msg-sender-name {
+            font-size: 11px;
+            color: rgba(74, 53, 72, 0.55);
+            margin-bottom: 2px;
+            padding-left: 2px;
+            font-weight: 600;
+        }
+        .message.group-ai .msg-content {
+            background: var(--bubble-ai-bg);
+            color: var(--text-primary);
+        }
+        .message.group-user {
+            flex-direction: row-reverse;
+        }
+        .message.group-user .msg-content {
+            background: var(--bubble-user-bg);
+            color: white;
+        }
+
+        /* 群成员标签 */
+        .member-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 8px 16px;
+        }
+        .member-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 15px;
+            font-size: 12px;
+            backdrop-filter: blur(5px);
+        }
+
         /* ===== Typing Indicator ===== */
         .typing-indicator {
             display: none;
@@ -1713,7 +1761,8 @@
                 <!-- 会话列表动态渲染 -->
             </div>
             <div class="list-footer">
-                <button class="list-footer-btn" onclick="toggleSettings()">⚙️ 设置</button>
+                <button class="list-footer-btn" onclick="showGroupListView()">👥 群聊</button>
+                <button class="list-footer-btn" onclick="showListView()">💬 私聊</button>
             </div>
         </div>
 
@@ -1778,6 +1827,57 @@
 
     <!-- Settings Overlay -->
     <div class="settings-overlay" id="settingsOverlay" onclick="toggleSettings()"></div>
+
+        <!-- ===== 视图3：群聊列表页 ===== -->
+        <div class="view" id="groupListView" style="display: none;">
+            <div class="list-header">
+                <div class="list-header-title">👥 群聊</div>
+                <button class="list-header-btn" onclick="createNewGroup()" title="创建群聊">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+            </div>
+            <div class="session-list" id="groupList">
+                <!-- 群聊列表动态渲染 -->
+            </div>
+            <div class="list-footer">
+                <button class="list-footer-btn" onclick="showListView()">💬 私聊</button>
+                <button class="list-footer-btn" onclick="toggleSettings()">⚙️ 设置</button>
+            </div>
+        </div>
+
+        <!-- ===== 视图4：群聊聊天页 ===== -->
+        <div class="view" id="groupChatView" style="display: none;">
+            <div class="chat-header">
+                <button class="chat-back-btn" onclick="goBackToGroupList()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="chat-header-center">
+                    <div class="header-info">
+                        <div class="header-name" id="groupHeaderName">群聊</div>
+                        <div class="header-status" id="groupHeaderStatus">N人在线</div>
+                    </div>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="header-btn" id="groupMemberBtn" onclick="showGroupMembers()" title="群成员">👥</button>
+                    <button class="header-btn" id="autoChatBtn" onclick="triggerGroupAIChat()" title="让AI们自己聊">🤖</button>
+                </div>
+            </div>
+            <div class="chat-area" id="groupChatArea">
+                <div class="welcome-message" id="groupWelcome">
+                    <div class="welcome-emoji">👥</div>
+                    <div class="welcome-text" id="groupWelcomeText">群聊已创建，开始聊天吧！</div>
+                </div>
+            </div>
+            <div class="typing-indicator" id="groupTypingIndicator">
+                <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+            </div>
+            <div class="input-area">
+                <textarea id="groupMessageInput" placeholder="发消息或@某人..." onkeydown="handleGroupInputKeydown(event)" oninput="autoResize(this)"></textarea>
+                <button class="send-btn" id="groupSendBtn" onclick="sendGroupMessage()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+                </button>
+            </div>
+        </div>
 
     <!-- Settings Panel -->
     <div class="settings-panel" id="settingsPanel">
@@ -3242,6 +3342,331 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // ===== 群聊功能 =====
+        let currentGroup = null;
+        let currentGroupId = '';
+        let groupIsSending = false;
+
+        // 视图切换
+        function showGroupListView() {
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('chatView').style.display = 'none';
+            document.getElementById('groupListView').style.display = 'flex';
+            document.getElementById('groupChatView').style.display = 'none';
+            loadGroupList();
+        }
+
+        function showGroupChatView() {
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('chatView').style.display = 'none';
+            document.getElementById('groupListView').style.display = 'none';
+            document.getElementById('groupChatView').style.display = 'flex';
+        }
+
+        async function goBackToGroupList() {
+            showGroupListView();
+            await loadGroupList();
+        }
+
+        // 加载群聊列表
+        async function loadGroupList() {
+            const groups = await GroupChat.getAllGroups();
+            const container = document.getElementById('groupList');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (groups.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--header-text);opacity:0.7;">还没有群聊<br>点击右上角 + 创建一个吧</div>';
+                return;
+            }
+
+            groups.forEach(g => {
+                const div = document.createElement('div');
+                div.className = 'session-item';
+                div.onclick = () => openGroupChat(g.id);
+                div.innerHTML = `
+                    <div class="session-avatar" style="font-size:20px;">👥</div>
+                    <div class="session-info">
+                        <div class="session-name-row">
+                            <span class="session-name">${g.name}</span>
+                        </div>
+                        <div class="session-preview">${g.member_count}人 · ${g.last_message || '暂无消息'}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 创建群聊
+        async function createNewGroup() {
+            // 先获取所有会话
+            const sessions = await AICompanion.getAllSessions();
+            if (sessions.length === 0) {
+                showToast('请先创建至少一个AI助手');
+                return;
+            }
+
+            // 弹出选择面板
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
+            
+            const panel = document.createElement('div');
+            panel.style.cssText = 'background:white;border-radius:16px;padding:20px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto;';
+            
+            let selectedIds = [];
+            let groupName = '新群聊';
+
+            const renderPanel = () => {
+                panel.innerHTML = `
+                    <h3 style="margin:0 0 12px 0;">创建群聊</h3>
+                    <input type="text" id="groupNameInput" value="${groupName}" placeholder="群聊名称" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-size:14px;">
+                    <div style="max-height:300px;overflow-y:auto;">
+                        ${sessions.map(s => `
+                            <div class="member-check-item" data-id="${s.id}" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;${selectedIds.includes(s.id)?'background:#f0e6ff;':''}" onclick="this.classList.toggle('sel');const id='${s.id}';if(this.classList.contains('sel')){if(!window.__sel)window.__sel=[];if(!window.__sel.includes(id))window.__sel.push(id)}else{window.__sel=(window.__sel||[]).filter(x=>x!==id)}this.style.background=this.classList.contains('sel')?'#f0e6ff':''">
+                                <span style="font-size:24px;">${s.avatar||'🌟'}</span>
+                                <span style="font-size:14px;flex:1;">${s.name}</span>
+                                <span style="font-size:12px;color:#999;">${s.relationship||''}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:16px;">
+                        <button id="cancelGroupBtn" style="flex:1;padding:10px;border:none;border-radius:8px;background:#f0f0f0;">取消</button>
+                        <button id="confirmGroupBtn" style="flex:1;padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;">创建</button>
+                    </div>
+                `;
+
+                document.getElementById('groupNameInput').oninput = (e) => { groupName = e.target.value; };
+                document.getElementById('cancelGroupBtn').onclick = () => { document.body.removeChild(overlay); };
+                document.getElementById('confirmGroupBtn').onclick = async () => {
+                    const finalIds = window.__sel || [];
+                    if (finalIds.length === 0) {
+                        showToast('请至少选择一个AI');
+                        return;
+                    }
+                    groupName = document.getElementById('groupNameInput').value.trim() || '新群聊';
+                    const memberSessions = sessions.filter(s => finalIds.includes(s.id));
+                    const newId = await GroupChat.createGroup(groupName, memberSessions);
+                    document.body.removeChild(overlay);
+                    window.__sel = [];
+                    await loadGroupList();
+                    openGroupChat(newId);
+                };
+            };
+
+            window.__sel = [];
+            renderPanel();
+            overlay.appendChild(panel);
+            document.body.appendChild(overlay);
+        }
+
+        // 打开群聊
+        async function openGroupChat(groupId) {
+            currentGroupId = groupId;
+            currentGroup = new GroupChat(groupId);
+            await currentGroup.initPromise;
+            currentGroup.isSending = false;
+
+            document.getElementById('groupHeaderName').textContent = currentGroup.name;
+            document.getElementById('groupHeaderStatus').textContent = currentGroup.members.length + '人在线';
+
+            // 渲染群聊历史
+            const chatArea = document.getElementById('groupChatArea');
+            chatArea.innerHTML = '';
+            const welcome = document.getElementById('groupWelcome');
+
+            if (currentGroup.chatHistory.length > 0) {
+                if (welcome) welcome.style.display = 'none';
+                currentGroup.chatHistory.forEach(msg => {
+                    appendGroupMessage(msg);
+                });
+            } else {
+                if (welcome) welcome.style.display = 'block';
+            }
+
+            showGroupChatView();
+            scrollGroupToBottom();
+        }
+
+        // 添加群聊消息到DOM
+        function appendGroupMessage(msg) {
+            const chatArea = document.getElementById('groupChatArea');
+            const div = document.createElement('div');
+            
+            if (msg.role === 'user') {
+                div.className = 'message group-user';
+                div.innerHTML = `
+                    <div class="msg-avatar">${msg.senderAvatar || '😊'}</div>
+                    <div>
+                        <div class="msg-content">${escapeHtml(msg.content || '')}</div>
+                    </div>
+                `;
+            } else {
+                div.className = 'message group-ai';
+                div.innerHTML = `
+                    <div class="msg-avatar">${msg.senderAvatar || '🤖'}</div>
+                    <div>
+                        <div class="msg-sender-name">${msg.senderName || 'AI'}</div>
+                        <div class="msg-content">${escapeHtml(msg.content || '')}</div>
+                    </div>
+                `;
+            }
+
+            chatArea.appendChild(div);
+        }
+
+        function scrollGroupToBottom() {
+            const chatArea = document.getElementById('groupChatArea');
+            if (chatArea) {
+                setTimeout(() => {
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                }, 100);
+            }
+        }
+
+        // 发送群聊消息
+        async function sendGroupMessage() {
+            if (groupIsSending) return;
+            const input = document.getElementById('groupMessageInput');
+            const text = input.value.trim();
+            if (!text || !currentGroup) return;
+
+            // 检查API Key
+            const companion = new AICompanion(sessionId);
+            await companion.initPromise;
+            const apiKey = companion.settings.api_key;
+            if (!apiKey) {
+                showToast('请先在私聊设置中配置 DeepSeek API Key');
+                return;
+            }
+
+            groupIsSending = true;
+            document.getElementById('groupSendBtn').disabled = true;
+
+            const welcome = document.getElementById('groupWelcome');
+            if (welcome) welcome.style.display = 'none';
+
+            input.value = '';
+            input.style.height = 'auto';
+
+            let aiCount = 0;
+
+            await currentGroup.sendUserMessage(
+                text,
+                apiKey,
+                // onMessage
+                (msg) => {
+                    appendGroupMessage(msg);
+                    scrollGroupToBottom();
+                },
+                // onDone
+                (error) => {
+                    if (error) showToast(error);
+                    groupIsSending = false;
+                    document.getElementById('groupSendBtn').disabled = false;
+                    input.focus();
+                }
+            );
+        }
+
+        // 触发AI自动聊天
+        async function triggerGroupAIChat() {
+            if (groupIsSending || !currentGroup) return;
+
+            const companion = new AICompanion(sessionId);
+            await companion.initPromise;
+            const apiKey = companion.settings.api_key;
+            if (!apiKey) {
+                showToast('请先配置 API Key');
+                return;
+            }
+
+            if (currentGroup.members.length < 2) {
+                showToast('至少需要2个群成员');
+                return;
+            }
+
+            groupIsSending = true;
+            document.getElementById('groupSendBtn').disabled = true;
+            document.getElementById('autoChatBtn').disabled = true;
+
+            const welcome = document.getElementById('groupWelcome');
+            if (welcome) welcome.style.display = 'none';
+
+            showGroupTyping(true);
+
+            await currentGroup.triggerAIChat(
+                apiKey,
+                (msg) => {
+                    showGroupTyping(false);
+                    appendGroupMessage(msg);
+                    scrollGroupToBottom();
+                    showGroupTyping(true);
+                },
+                () => {
+                    showGroupTyping(false);
+                    groupIsSending = false;
+                    document.getElementById('groupSendBtn').disabled = false;
+                    document.getElementById('autoChatBtn').disabled = false;
+                }
+            );
+        }
+
+        function showGroupTyping(show) {
+            const indicator = document.getElementById('groupTypingIndicator');
+            if (indicator) {
+                indicator.classList.toggle('active', show);
+            }
+        }
+
+        // 群成员列表
+        function showGroupMembers() {
+            if (!currentGroup) return;
+            const members = currentGroup.members;
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
+
+            const panel = document.createElement('div');
+            panel.style.cssText = 'background:white;border-radius:16px;padding:20px;width:90%;max-width:350px;max-height:70vh;overflow-y:auto;';
+            panel.innerHTML = `
+                <h3 style="margin:0 0 16px 0;">群成员 (${members.length})</h3>
+                ${members.map((m, i) => `
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;">
+                        <span style="font-size:24px;">${m.avatar}</span>
+                        <span style="flex:1;font-size:14px;">${m.name}</span>
+                        <button data-idx="${i}" class="remove-member-btn" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:18px;" title="移除">✕</button>
+                    </div>
+                `).join('')}
+                <button id="closeMembersBtn" style="width:100%;padding:10px;margin-top:12px;border:none;border-radius:8px;background:#f0f0f0;">关闭</button>
+            `;
+
+            overlay.appendChild(panel);
+            document.body.appendChild(overlay);
+
+            document.getElementById('closeMembersBtn').onclick = () => document.body.removeChild(overlay);
+
+            // 删除成员
+            panel.querySelectorAll('.remove-member-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = parseInt(btn.dataset.idx);
+                    const member = members[idx];
+                    if (confirm(`确定将"${member.name}"移出群聊？`)) {
+                        currentGroup.removeMember(member.sessionId);
+                        document.body.removeChild(overlay);
+                        document.getElementById('groupHeaderStatus').textContent = currentGroup.members.length + '人在线';
+                        showToast(`${member.name} 已移出群聊`);
+                    }
+                };
+            });
+        }
+
+        // 群聊输入键盘事件
+        function handleGroupInputKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendGroupMessage();
+            }
         }
 
         // ===== Start =====

@@ -1116,7 +1116,359 @@ async function initCompanion(sessionId) {
     return currentCompanion;
 }
 
+// ===== GroupChat 群聊类 =====
+class GroupChat {
+    constructor(groupId) {
+        this.groupId = groupId || 'group_' + Date.now();
+        this.name = '新群聊';
+        this.members = []; // [{sessionId, name, avatar, personality, relationship}]
+        this.chatHistory = []; // [{role, senderSessionId, senderName, senderAvatar, content, timestamp}]
+        this.initialized = false;
+        this.initPromise = this.initialize();
+    }
+
+    async initialize() {
+        try {
+            await secureStorage.initPromise;
+            const data = await secureStorage.getItem(`ai_companion_${this.groupId}_group`);
+            if (data) {
+                this.name = data.name || this.name;
+                this.members = data.members || [];
+                this.chatHistory = data.chatHistory || [];
+            }
+            this.initialized = true;
+        } catch (e) {
+            console.error('GroupChat 初始化失败:', e);
+            this.initialized = true;
+        }
+    }
+
+    async save() {
+        await secureStorage.setItem(`ai_companion_${this.groupId}_group`, {
+            name: this.name,
+            members: this.members,
+            chatHistory: this.chatHistory
+        });
+    }
+
+    addMember(sessionId, info) {
+        if (!this.members.find(m => m.sessionId === sessionId)) {
+            this.members.push({
+                sessionId,
+                name: info.name || 'AI',
+                avatar: info.avatar || '🌟',
+                personality: info.personality || 'default',
+                relationship: info.relationship || 'friend'
+            });
+            this.save();
+        }
+    }
+
+    removeMember(sessionId) {
+        this.members = this.members.filter(m => m.sessionId !== sessionId);
+        this.save();
+    }
+
+    getMember(sessionId) {
+        return this.members.find(m => m.sessionId === sessionId);
+    }
+
+    // 检测用户是否@了某个AI
+    _extractMention(text) {
+        for (const m of this.members) {
+            if (text.includes('@' + m.name) || text.includes('＠' + m.name)) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    // 挑选随机AI（不包括指定的）
+    _pickRandomMember(excludeSessionIds = []) {
+        const candidates = this.members.filter(m => !excludeSessionIds.includes(m.sessionId));
+        if (candidates.length === 0) return null;
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    // 用户发送消息 → AI回复
+    async sendUserMessage(userMessage, apiKey, onMessage, onDone) {
+        if (!this.initialized) await this.initPromise;
+        if (this.members.length === 0) {
+            onDone('请先添加群成员');
+            return;
+        }
+        if (!apiKey) {
+            onDone('请先配置 API Key');
+            return;
+        }
+
+        // 添加用户消息到历史
+        this.chatHistory.push({
+            role: 'user',
+            senderSessionId: 'user',
+            senderName: '我',
+            senderAvatar: '😊',
+            content: userMessage,
+            timestamp: new Date().toISOString()
+        });
+        await this.save();
+        onMessage({ role: 'user', senderName: '我', senderAvatar: '😊', content: userMessage });
+
+        // 判断是否@了某人
+        const mentioned = this._extractMention(userMessage);
+        let firstResponder;
+        if (mentioned) {
+            firstResponder = mentioned;
+        } else {
+            firstResponder = this._pickRandomMember();
+        }
+
+        if (!firstResponder) {
+            onDone('没有可用的群成员');
+            return;
+        }
+
+        // 第一个AI回复
+        const firstReply = await this._getAIReply(firstResponder, userMessage, apiKey);
+        this.chatHistory.push(firstReply);
+        await this.save();
+        onMessage({
+            role: 'ai',
+            senderSessionId: firstResponder.sessionId,
+            senderName: firstResponder.name,
+            senderAvatar: firstResponder.avatar,
+            content: firstReply.content
+        });
+
+        // 其他AI可能接话（最多4个额外AI，总回合不超过5）
+        const maxExtra = Math.min(4, this.members.length - 1);
+        let replied = [firstResponder.sessionId];
+        const extraCount = Math.floor(Math.random() * Math.min(maxExtra + 1, 3)); // 随机0~2个额外回复
+
+        for (let i = 0; i < extraCount; i++) {
+            const next = this._pickRandomMember(replied);
+            if (!next) break;
+
+            // 构建上下文让AI看到之前的对话
+            const context = this._buildContextForAI(next);
+            const reply = await this._getAIReply(next, context, apiKey);
+            this.chatHistory.push(reply);
+            await this.save();
+            onMessage({
+                role: 'ai',
+                senderSessionId: next.sessionId,
+                senderName: next.name,
+                senderAvatar: next.avatar,
+                content: reply.content
+            });
+            replied.push(next.sessionId);
+        }
+
+        onDone(null);
+    }
+
+    // AI之间的自发聊天（无用户参与，最多5回合）
+    async triggerAIChat(apiKey, onMessage, onDone) {
+        if (!this.initialized) await this.initPromise;
+        if (this.members.length < 2) {
+            onDone('至少需要2个群成员');
+            return;
+        }
+
+        const maxRounds = 5;
+        let lastSpeaker = null;
+
+        for (let round = 0; round < maxRounds; round++) {
+            const speaker = this._pickRandomMember(lastSpeaker ? [lastSpeaker.sessionId] : []);
+            if (!speaker) break;
+            lastSpeaker = speaker;
+
+            const context = this._buildContextForAI(speaker);
+            const reply = await this._getAIReply(speaker, context, apiKey);
+            this.chatHistory.push(reply);
+            await this.save();
+            onMessage({
+                role: 'ai',
+                senderSessionId: speaker.sessionId,
+                senderName: speaker.name,
+                senderAvatar: speaker.avatar,
+                content: reply.content
+            });
+
+            // 短延迟模拟思考
+            await this._sleep(800 + Math.random() * 1200);
+        }
+
+        onDone(null);
+    }
+
+    // 构建给某个AI的上下文提示
+    _buildContextForAI(member) {
+        const recent = this.chatHistory.slice(-10);
+        const lines = recent.map(msg => {
+            const label = msg.role === 'user' ? msg.senderName : msg.senderName;
+            return `${label}：${msg.content}`;
+        });
+        return `【群聊记录】\n${lines.join('\n')}\n\n请以你自己的身份回复上面最后一条消息。`;
+    }
+
+    // 让单个AI回复
+    async _getAIReply(member, prompt, apiKey) {
+        const companion = new AICompanion(member.sessionId);
+        await companion.initPromise;
+        
+        // 临时设置API key
+        const originalKey = companion.settings.api_key;
+        companion.settings.api_key = apiKey;
+
+        // 构建系统提示（群聊模式）
+        const s = companion.settings;
+        const personalityId = s.personality_id || 'default';
+        const relationship = s.relationship || 'friend';
+        const personality = PERSONALITY_TEMPLATES.find(p => p.id === personalityId);
+        const basePrompt = personality ? personality.system_prompt : PERSONALITY_TEMPLATES[0].system_prompt;
+        const relationshipBase = RELATIONSHIP_PROMPTS[relationship] || RELATIONSHIP_PROMPTS['friend'];
+
+        const systemPrompt = 
+            `${basePrompt}\n\n` +
+            `【群聊模式】你现在在一个群聊中，你的名字是"${member.name}"。${relationshipBase}\n` +
+            `群聊规则：\n` +
+            `1. 回复自然简短（20-50字），像真人微信聊天\n` +
+            `2. 可以赞同/吐槽/补充其他群友的发言\n` +
+            `3. 保持角色性格一致性\n` +
+            `4. 不要重复别人刚说过的话\n` +
+            `5. 如果被@了，要认真回应`;
+
+        const messages = [{ role: 'system', content: systemPrompt }];
+        messages.push({ role: 'user', content: prompt });
+
+        const model = companion.settings.model || 'deepseek-v4-flash';
+
+        try {
+            const response = await fetch(DEEPSEEK_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: 0.9,
+                    max_tokens: 200,
+                    stream: false
+                })
+            });
+
+            companion.settings.api_key = originalKey;
+
+            if (!response.ok) {
+                return {
+                    role: 'ai',
+                    senderSessionId: member.sessionId,
+                    senderName: member.name,
+                    senderAvatar: member.avatar,
+                    content: '（暂时无法回复...）',
+                    timestamp: new Date().toISOString()
+                };
+            }
+
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content || '...';
+
+            return {
+                role: 'ai',
+                senderSessionId: member.sessionId,
+                senderName: member.name,
+                senderAvatar: member.avatar,
+                content: content.trim(),
+                timestamp: new Date().toISOString()
+            };
+        } catch (e) {
+            companion.settings.api_key = originalKey;
+            return {
+                role: 'ai',
+                senderSessionId: member.sessionId,
+                senderName: member.name,
+                senderAvatar: member.avatar,
+                content: '（网络出错了...）',
+                timestamp: new Date().toISOString()
+            };
+        }
+    }
+
+    _sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // 静态方法
+    static async getAllGroups() {
+        const groups = [];
+        const groupIds = new Set();
+        
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key) {
+                const match = key.match(/ai_companion_(group_[^_]+)_/);
+                if (match) groupIds.add(match[1]);
+            }
+        }
+
+        for (const groupId of groupIds) {
+            try {
+                const gc = new GroupChat(groupId);
+                await gc.initPromise;
+                groups.push({
+                    id: groupId,
+                    name: gc.name,
+                    member_count: gc.members.length,
+                    last_message: gc.chatHistory.length > 0 
+                        ? (gc.chatHistory[gc.chatHistory.length - 1].content || '').slice(0, 30) + '...' 
+                        : '',
+                    updated_at: gc.chatHistory.length > 0 
+                        ? gc.chatHistory[gc.chatHistory.length - 1].timestamp 
+                        : new Date().toISOString()
+                });
+            } catch (e) {
+                console.error('加载群聊失败:', groupId, e);
+            }
+        }
+
+        groups.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        return groups;
+    }
+
+    static async createGroup(name, memberSessions) {
+        const groupId = 'group_' + Date.now();
+        const gc = new GroupChat(groupId);
+        await gc.initPromise;
+        gc.name = name || '新群聊';
+
+        for (const s of memberSessions) {
+            const companion = new AICompanion(s.id);
+            await companion.initPromise;
+            gc.addMember(s.id, {
+                name: companion.settings.ai_name || 'AI',
+                avatar: companion.settings.ai_avatar || '🌟',
+                personality: companion.settings.personality_id || 'default',
+                relationship: companion.settings.relationship || 'friend'
+            });
+        }
+        await gc.save();
+        return groupId;
+    }
+
+    static deleteGroup(groupId) {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.includes(groupId)) {
+                localStorage.removeItem(key);
+            }
+        }
+    }
+}
+
 // ===== 导出 =====
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { AICompanion, PERSONALITY_TEMPLATES, RELATIONSHIP_PROMPTS, RELATIONSHIP_LIST, initCompanion };
+    module.exports = { AICompanion, GroupChat, PERSONALITY_TEMPLATES, RELATIONSHIP_PROMPTS, RELATIONSHIP_LIST, initCompanion };
 }
