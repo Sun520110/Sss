@@ -57,6 +57,17 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Allow text selection on inputs and message content */
+        input, textarea, .msg-content, .form-input {
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         body {
@@ -260,11 +271,13 @@
             align-items: center;
             gap: 12px;
             padding: 14px 16px;
+            min-height: 64px;
             background: rgba(255, 255, 255, 0.6);
             cursor: pointer;
             transition: background 0.15s;
             position: relative;
             border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .session-item:active {
@@ -364,13 +377,13 @@
         }
 
         .session-action-btn {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border: none;
             background: rgba(255, 255, 255, 0.8);
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -528,8 +541,8 @@
         }
 
         .header-btn {
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             border: none;
             background: rgba(255, 255, 255, 0.2);
@@ -540,6 +553,7 @@
             align-items: center;
             justify-content: center;
             transition: all var(--transition-fast);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .header-btn:hover {
@@ -561,6 +575,7 @@
             gap: 12px;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
 
         .chat-area::-webkit-scrollbar {
@@ -924,18 +939,19 @@
         }
 
         .settings-close {
-            width: 32px;
-            height: 32px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             border: none;
             background: rgba(118, 75, 162, 0.08);
             color: var(--panel-text);
-            font-size: 20px;
+            font-size: 24px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all var(--transition-fast);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .settings-close:hover {
@@ -1849,37 +1865,49 @@
         }
 
         /* ===== Mention Panel (@) ===== */
-        .mention-panel {
-            position: absolute;
-            bottom: 100%;
-            left: 0; right: 0;
-            background: rgba(45,31,58,0.97);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-            max-height: 220px;
-            overflow-y: auto;
+        .mention-backdrop {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             z-index: 210;
-            backdrop-filter: blur(12px);
-            margin-bottom: 4px;
             display: none;
-            animation: fadeIn 0.15s ease;
+        }
+        .mention-backdrop.show { display: block; }
+        .mention-panel {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(45,31,58,0.97);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            max-height: 50vh;
+            overflow-y: auto;
+            z-index: 211;
+            backdrop-filter: blur(12px);
+            padding-bottom: var(--safe-bottom);
+            display: none;
+            animation: slideUp 0.2s ease;
         }
         .mention-panel.show { display: block; }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
         .mention-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
+            gap: 12px;
+            padding: 14px 16px;
             cursor: pointer;
             transition: background var(--transition-fast);
             border-bottom: 1px solid rgba(255,255,255,0.05);
+            min-height: 56px;
+            -webkit-tap-highlight-color: transparent;
         }
         .mention-item:last-child { border-bottom: none; }
-        .mention-item:hover, .mention-item.selected { background: rgba(103,58,183,0.3); }
-        .mention-item .m-avatar { font-size: 22px; width: 32px; text-align: center; }
+        .mention-item:active, .mention-item.selected { background: rgba(103,58,183,0.4); }
+        .mention-item .m-avatar { font-size: 28px; width: 40px; text-align: center; }
         .mention-item .m-info { flex: 1; }
-        .mention-item .m-name { color: #fff; font-size: 14px; font-weight: 500; }
-        .mention-item .m-role { color: rgba(255,255,255,0.5); font-size: 11px; }
+        .mention-item .m-name { color: #fff; font-size: 15px; font-weight: 500; }
+        .mention-item .m-role { color: rgba(255,255,255,0.5); font-size: 12px; }
 
         /* @ mention highlight in messages */
         .msg-mention {
@@ -2098,7 +2126,14 @@
                 <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
             </div>
             <div class="input-area">
-                <div class="mention-panel" id="mentionPanel"></div>
+                <div class="mention-backdrop" id="mentionBackdrop" onclick="closeMentionPanel()"></div>
+                <div class="mention-panel" id="mentionPanel">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:#fff;font-size:15px;font-weight:600;">选择要@的成员</span>
+                        <button onclick="closeMentionPanel()" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:22px;padding:4px 8px;cursor:pointer;">✕</button>
+                    </div>
+                    <div id="mentionItemList"></div>
+                </div>
                 <textarea id="groupMessageInput" placeholder="发消息或@某人..." onkeydown="handleGroupInputKeydown(event)" oninput="handleGroupInputChange(event)"></textarea>
                 <button class="send-btn" id="groupSendBtn" onclick="sendGroupMessage()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
@@ -2695,10 +2730,12 @@
         function showChatView() {
             document.getElementById('listView').style.display = 'none';
             document.getElementById('chatView').style.display = 'flex';
+            history.pushState({ view: 'chat' }, '', '');
         }
 
         async function goBackToList() {
             saveSettings();
+            history.pushState({ view: 'list' }, '', '');
             showListView();
             await loadSessions();
         }
@@ -3735,6 +3772,7 @@
             document.getElementById('chatView').style.display = 'none';
             document.getElementById('groupListView').style.display = 'flex';
             document.getElementById('groupChatView').style.display = 'none';
+            history.pushState({ view: 'grouplist' }, '', '');
             loadGroupList();
         }
 
@@ -3743,9 +3781,11 @@
             document.getElementById('chatView').style.display = 'none';
             document.getElementById('groupListView').style.display = 'none';
             document.getElementById('groupChatView').style.display = 'flex';
+            history.pushState({ view: 'groupchat' }, '', '');
         }
 
         async function goBackToGroupList() {
+            history.pushState({ view: 'grouplist' }, '', '');
             showGroupListView();
             await loadGroupList();
         }
@@ -4106,6 +4146,9 @@
         function showMentionPanel(filter) {
             if (!currentGroup || !currentGroup.members.length) return;
             const panel = document.getElementById('mentionPanel');
+            const backdrop = document.getElementById('mentionBackdrop');
+            const listEl = document.getElementById('mentionItemList');
+            if (!listEl) return;
             const members = currentGroup.members;
             const lf = filter.toLowerCase();
             const filtered = members.filter(m => 
@@ -4115,7 +4158,7 @@
             );
             if (filtered.length === 0) { closeMentionPanel(); return; }
 
-            panel.innerHTML = filtered.map((m, i) => `
+            listEl.innerHTML = filtered.map((m, i) => `
                 <div class="mention-item ${i === 0 ? 'selected' : ''}" data-name="${escapeHtml(m.name)}" data-avatar="${escapeHtml(m.avatar)}" onclick="insertMention('${escapeHtml(m.name)}','${escapeHtml(m.avatar)}');closeMentionPanel()">
                     <span class="m-avatar">${m.avatar || '🌟'}</span>
                     <div class="m-info">
@@ -4125,11 +4168,12 @@
                 </div>
             `).join('');
             panel.classList.add('show');
+            if (backdrop) backdrop.classList.add('show');
         }
 
         function moveMentionSelection(dir) {
-            const panel = document.getElementById('mentionPanel');
-            const items = panel.querySelectorAll('.mention-item');
+            const listEl = document.getElementById('mentionItemList');
+            const items = listEl.querySelectorAll('.mention-item');
             let idx = -1;
             items.forEach((item, i) => { if (item.classList.contains('selected')) idx = i; });
             items.forEach(item => item.classList.remove('selected'));
@@ -4140,7 +4184,11 @@
 
         function closeMentionPanel() {
             const panel = document.getElementById('mentionPanel');
-            if (panel) { panel.classList.remove('show'); panel.innerHTML = ''; }
+            const backdrop = document.getElementById('mentionBackdrop');
+            const listEl = document.getElementById('mentionItemList');
+            if (panel) panel.classList.remove('show');
+            if (backdrop) backdrop.classList.remove('show');
+            if (listEl) listEl.innerHTML = '';
         }
 
         function insertMention(name, avatar) {
@@ -4157,6 +4205,74 @@
             input.focus();
             autoResize(input);
         }
+
+        // ===== 系统返回键处理 =====
+        function handleBackButton() {
+            // 设置面板打开 → 关闭设置
+            const settingsPanel = document.getElementById('settingsPanel');
+            const settingsOverlay = document.getElementById('settingsOverlay');
+            if (settingsPanel && settingsPanel.classList.contains('open')) {
+                toggleSettings();
+                return;
+            }
+            // Prompt 对话框打开 → 关闭
+            const promptOverlay = document.getElementById('promptOverlay');
+            if (promptOverlay && promptOverlay.style.display === 'flex' && promptOverlay.style.display !== 'none') {
+                closePromptDialog();
+                return;
+            }
+            // Mention 面板打开 → 关闭
+            const mentionPanel = document.getElementById('mentionPanel');
+            if (mentionPanel && mentionPanel.classList.contains('show')) {
+                closeMentionPanel();
+                return;
+            }
+            // 群聊页 → 返回群聊列表
+            const groupChatView = document.getElementById('groupChatView');
+            if (groupChatView && groupChatView.style.display === 'flex') {
+                goBackToGroupList();
+                return;
+            }
+            // 聊天页 → 返回会话列表
+            const chatView = document.getElementById('chatView');
+            if (chatView && chatView.style.display === 'flex') {
+                goBackToList();
+                return;
+            }
+            // 群聊列表 → 返回会话列表
+            const groupListView = document.getElementById('groupListView');
+            if (groupListView && groupListView.style.display === 'flex') {
+                showListView();
+                return;
+            }
+            // 已到根页面 → 退出（仅在 Capacitor 中）
+            if (window.Capacitor) {
+                try { window.Capacitor.App.exitApp(); } catch(e) {}
+            }
+        }
+
+        // 注册 Capacitor 返回键监听
+        window.addEventListener('capacitorBackButton', (e) => {
+            e.preventDefault();
+            handleBackButton();
+        });
+
+        // 同时监听 popstate（浏览器返回 / 手势返回）
+        let backStateIdx = 0;
+        window.addEventListener('popstate', (e) => {
+            handleBackButton();
+        });
+
+        // ===== 页面恢复时滚动优化 =====
+        window.addEventListener('resize', () => {
+            // 键盘弹出/收起时，重新计算输入位置
+            const inputs = document.querySelectorAll('textarea:focus, input:focus');
+            if (inputs.length > 0) {
+                setTimeout(() => {
+                    inputs[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }, 150);
+            }
+        });
 
         // ===== Start =====
         document.addEventListener('DOMContentLoaded', init);
