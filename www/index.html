@@ -3773,15 +3773,15 @@
                     </div>
                 `;
 
-                document.getElementById('groupNameInput').oninput = (e) => { groupName = e.target.value; };
-                document.getElementById('cancelGroupBtn').onclick = () => { document.body.removeChild(overlay); };
-                document.getElementById('confirmGroupBtn').onclick = async () => {
+                panel.querySelector('#groupNameInput').oninput = (e) => { groupName = e.target.value; };
+                panel.querySelector('#cancelGroupBtn').onclick = () => { document.body.removeChild(overlay); };
+                panel.querySelector('#confirmGroupBtn').onclick = async () => {
                     const finalIds = window.__sel || [];
                     if (finalIds.length === 0) {
                         showToast('请至少选择一个AI');
                         return;
                     }
-                    groupName = document.getElementById('groupNameInput').value.trim() || '新群聊';
+                    groupName = panel.querySelector('#groupNameInput').value.trim() || '新群聊';
                     const memberSessions = sessions.filter(s => finalIds.includes(s.id));
                     const newId = await GroupChat.createGroup(groupName, memberSessions);
                     document.body.removeChild(overlay);
