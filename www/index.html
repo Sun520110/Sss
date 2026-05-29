@@ -786,6 +786,7 @@
 
         /* ===== Input Area ===== */
         .input-area {
+            position: relative;
             padding: 10px 16px;
             padding-bottom: calc(10px + var(--safe-bottom));
             background: var(--header-bg);
@@ -1847,6 +1848,48 @@
             to { transform: scale(1); opacity: 1; }
         }
 
+        /* ===== Mention Panel (@) ===== */
+        .mention-panel {
+            position: absolute;
+            bottom: 100%;
+            left: 0; right: 0;
+            background: rgba(45,31,58,0.97);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 210;
+            backdrop-filter: blur(12px);
+            margin-bottom: 4px;
+            display: none;
+            animation: fadeIn 0.15s ease;
+        }
+        .mention-panel.show { display: block; }
+        .mention-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: background var(--transition-fast);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .mention-item:last-child { border-bottom: none; }
+        .mention-item:hover, .mention-item.selected { background: rgba(103,58,183,0.3); }
+        .mention-item .m-avatar { font-size: 22px; width: 32px; text-align: center; }
+        .mention-item .m-info { flex: 1; }
+        .mention-item .m-name { color: #fff; font-size: 14px; font-weight: 500; }
+        .mention-item .m-role { color: rgba(255,255,255,0.5); font-size: 11px; }
+
+        /* @ mention highlight in messages */
+        .msg-mention {
+            color: #ffd54f;
+            font-weight: 600;
+            background: rgba(255,213,79,0.12);
+            padding: 0 3px;
+            border-radius: 3px;
+        }
+
         /* ===== Responsive ===== */
         @media (max-width: 480px) {
             .settings-panel {
@@ -2055,7 +2098,8 @@
                 <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
             </div>
             <div class="input-area">
-                <textarea id="groupMessageInput" placeholder="发消息或@某人..." onkeydown="handleGroupInputKeydown(event)" oninput="autoResize(this)"></textarea>
+                <div class="mention-panel" id="mentionPanel"></div>
+                <textarea id="groupMessageInput" placeholder="发消息或@某人..." onkeydown="handleGroupInputKeydown(event)" oninput="handleGroupInputChange(event)"></textarea>
                 <button class="send-btn" id="groupSendBtn" onclick="sendGroupMessage()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
                 </button>
@@ -3829,13 +3873,14 @@
         function appendGroupMessage(msg) {
             const chatArea = document.getElementById('groupChatArea');
             const div = document.createElement('div');
+            const content = highlightMentions(escapeHtml(msg.content || ''));
             
             if (msg.role === 'user') {
                 div.className = 'message group-user';
                 div.innerHTML = `
                     <div class="msg-avatar">${msg.senderAvatar || '😊'}</div>
                     <div>
-                        <div class="msg-content">${escapeHtml(msg.content || '')}</div>
+                        <div class="msg-content">${content}</div>
                     </div>
                 `;
             } else {
@@ -3844,12 +3889,24 @@
                     <div class="msg-avatar">${msg.senderAvatar || '🤖'}</div>
                     <div>
                         <div class="msg-sender-name">${msg.senderName || 'AI'}</div>
-                        <div class="msg-content">${escapeHtml(msg.content || '')}</div>
+                        <div class="msg-content">${content}</div>
                     </div>
                 `;
             }
 
             chatArea.appendChild(div);
+        }
+
+        // 高亮 @mention 文本
+        function highlightMentions(text) {
+            if (!currentGroup || !currentGroup.members) return text;
+            let result = text;
+            for (const m of currentGroup.members) {
+                const escaped = escapeHtml(m.name);
+                const pattern = new RegExp(`@${escaped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+                result = result.replace(pattern, `<span class="msg-mention">@${escaped}</span>`);
+            }
+            return result;
         }
 
         function scrollGroupToBottom() {
@@ -3995,10 +4052,110 @@
 
         // 群聊输入键盘事件
         function handleGroupInputKeydown(event) {
+            // 关闭 mention 面板
+            const panel = document.getElementById('mentionPanel');
+            if (panel && panel.classList.contains('show')) {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    moveMentionSelection(1);
+                    return;
+                }
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    moveMentionSelection(-1);
+                    return;
+                }
+                if (event.key === 'Tab' || event.key === 'Enter') {
+                    event.preventDefault();
+                    const sel = panel.querySelector('.mention-item.selected');
+                    if (sel) {
+                        insertMention(sel.dataset.name, sel.dataset.avatar);
+                    }
+                    closeMentionPanel();
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeMentionPanel();
+                    return;
+                }
+            }
+
+            // Enter 发送
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
+                if (panel && panel.classList.contains('show')) return;
                 sendGroupMessage();
             }
+        }
+
+        function handleGroupInputChange(event) {
+            autoResize(event.target);
+            // 检测 @ 号触发 mention 面板
+            const input = event.target;
+            const cursorPos = input.selectionStart;
+            const textBeforeCursor = input.value.substring(0, cursorPos);
+            const atMatch = textBeforeCursor.match(/@([\u4e00-\u9fa5\w]*)$/);
+            if (atMatch) {
+                showMentionPanel(atMatch[1]);
+            } else {
+                closeMentionPanel();
+            }
+        }
+
+        function showMentionPanel(filter) {
+            if (!currentGroup || !currentGroup.members.length) return;
+            const panel = document.getElementById('mentionPanel');
+            const members = currentGroup.members;
+            const lf = filter.toLowerCase();
+            const filtered = members.filter(m => 
+                !lf || m.name.toLowerCase().includes(lf) || 
+                (m.personality || '').toLowerCase().includes(lf) ||
+                (m.relationship || '').toLowerCase().includes(lf)
+            );
+            if (filtered.length === 0) { closeMentionPanel(); return; }
+
+            panel.innerHTML = filtered.map((m, i) => `
+                <div class="mention-item ${i === 0 ? 'selected' : ''}" data-name="${escapeHtml(m.name)}" data-avatar="${escapeHtml(m.avatar)}" onclick="insertMention('${escapeHtml(m.name)}','${escapeHtml(m.avatar)}');closeMentionPanel()">
+                    <span class="m-avatar">${m.avatar || '🌟'}</span>
+                    <div class="m-info">
+                        <div class="m-name">${escapeHtml(m.name)}</div>
+                        <div class="m-role">${escapeHtml(m.relationship || 'AI 成员')}</div>
+                    </div>
+                </div>
+            `).join('');
+            panel.classList.add('show');
+        }
+
+        function moveMentionSelection(dir) {
+            const panel = document.getElementById('mentionPanel');
+            const items = panel.querySelectorAll('.mention-item');
+            let idx = -1;
+            items.forEach((item, i) => { if (item.classList.contains('selected')) idx = i; });
+            items.forEach(item => item.classList.remove('selected'));
+            const newIdx = ((idx + dir) % items.length + items.length) % items.length;
+            items[newIdx].classList.add('selected');
+            items[newIdx].scrollIntoView({ block: 'nearest' });
+        }
+
+        function closeMentionPanel() {
+            const panel = document.getElementById('mentionPanel');
+            if (panel) { panel.classList.remove('show'); panel.innerHTML = ''; }
+        }
+
+        function insertMention(name, avatar) {
+            const input = document.getElementById('groupMessageInput');
+            const cursorPos = input.selectionStart;
+            const textBefore = input.value.substring(0, cursorPos);
+            const textAfter = input.value.substring(cursorPos);
+            // 替换最后一个 @xxx 为 @name 
+            const beforeReplaced = textBefore.replace(/@[\u4e00-\u9fa5\w]*$/, '@' + name + ' ');
+            input.value = beforeReplaced + textAfter;
+            // 光标放到 @name  之后
+            const newPos = beforeReplaced.length;
+            input.setSelectionRange(newPos, newPos);
+            input.focus();
+            autoResize(input);
         }
 
         // ===== Start =====
