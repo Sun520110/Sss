@@ -2588,7 +2588,19 @@
         };
 
         // ===== Initialization =====
+        function calibrateSafeArea() {
+            // iOS: env(safe-area-inset-top) 自动工作
+            // Android Capacitor: env() 不被支持，需手动设置 24dp
+            // Web 浏览器: safe-area 为 0，不需额外 padding
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            if (isAndroid) {
+                document.documentElement.style.setProperty('--safe-top', '24px');
+            }
+        }
+
         async function init() {
+            // 校准安全区域（修复 Android 状态栏重叠）
+            calibrateSafeArea();
             // 先检查解锁状态
             if (!checkUnlockStatus()) {
                 // 未解锁，等待用户输入解锁码
