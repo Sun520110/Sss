@@ -1893,6 +1893,113 @@
             to { transform: scale(1); opacity: 1; }
         }
 
+        /* ===== Update Modal ===== */
+        .update-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .update-panel {
+            width: 90%;
+            max-width: 360px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: scaleIn 0.3s ease;
+        }
+        .update-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .update-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 16px;
+        }
+        .update-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #4a3548;
+            margin-bottom: 4px;
+        }
+        .update-version {
+            font-size: 14px;
+            color: #f5576c;
+            font-weight: 600;
+        }
+        .update-changelog {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 16px 0;
+            padding: 16px;
+            background: #f8f8f8;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #666;
+            white-space: pre-wrap;
+        }
+        .update-progress {
+            margin: 20px 0;
+        }
+        .update-progress-bar {
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .update-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .update-progress-text {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        .update-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .update-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .update-btn:active {
+            transform: scale(0.98);
+        }
+        .update-btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .update-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
         /* ===== Mention Panel (@) ===== */
         .mention-backdrop {
             position: fixed;
@@ -2298,6 +2405,21 @@
                 </div>
             </div>
 
+            <!-- 应用更新 -->
+            <div class="settings-section">
+                <h3>应用更新</h3>
+                <div class="form-group">
+                    <div class="form-row" style="justify-content: space-between; align-items: center;">
+                        <div>
+                            <div class="form-label">当前版本</div>
+                            <div class="form-hint" id="currentVersionText">v1.2.0</div>
+                        </div>
+                        <button class="btn-secondary" id="checkUpdateBtn" onclick="checkForAppUpdate()">检查更新</button>
+                    </div>
+                    <div id="updateStatus" style="margin-top: 8px; font-size: 13px; color: #666;"></div>
+                </div>
+            </div>
+
             <!-- AI 性格 -->
             <div class="settings-section">
                 <h3>AI 性格</h3>
@@ -2461,7 +2583,32 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <!-- Update Modal -->
+    <div class="update-overlay" id="updateOverlay" style="display:none;">
+        <div class="update-panel">
+            <div class="update-header">
+                <div class="update-icon">📦</div>
+                <div class="update-title">发现新版本</div>
+                <div class="update-version" id="updateVersionText">v1.3.0</div>
+            </div>
+            <div class="update-changelog" id="updateChangelog">
+                <!-- 更新日志内容 -->
+            </div>
+            <div class="update-progress" id="updateProgress" style="display:none;">
+                <div class="update-progress-bar">
+                    <div class="update-progress-fill" id="updateProgressFill" style="width:0%"></div>
+                </div>
+                <div class="update-progress-text" id="updateProgressText">0%</div>
+            </div>
+            <div class="update-buttons" id="updateButtons">
+                <button class="update-btn update-btn-secondary" onclick="closeUpdateModal()">稍后提醒</button>
+                <button class="update-btn update-btn-primary" id="updateActionBtn" onclick="startUpdate()">立即更新</button>
+            </div>
+        </div>
+    </div>
+
     <script src="static/ai-companion.js"></script>
+    <script src="static/update-manager.js"></script>
     <script>
         // ===== Unlock System =====
         const UNLOCK_CODE = '110120119';
@@ -2656,6 +2803,134 @@
             loadGreeting();
             loadMemories();
             loadChatHistory();
+            
+            // 初始化更新管理器并自动检查更新
+            if (typeof updateManager !== 'undefined') {
+                await updateManager.init();
+                // 延迟2秒后检查更新（避免影响启动速度）
+                setTimeout(() => autoCheckUpdate(), 2000);
+            }
+        }
+
+        // 自动检查更新（静默）
+        async function autoCheckUpdate() {
+            if (typeof updateManager === 'undefined') return;
+            
+            // 只在非首次启动时自动检查
+            const hasLaunched = localStorage.getItem('ai_companion_has_launched');
+            if (!hasLaunched) {
+                localStorage.setItem('ai_companion_has_launched', 'true');
+                return;
+            }
+            
+            const result = await updateManager.checkForUpdate(false);
+            if (result.hasUpdate && !updateManager.isIgnored(result.version)) {
+                showUpdateModal(result);
+            }
+        }
+
+        // 手动检查更新
+        async function checkForAppUpdate() {
+            if (typeof updateManager === 'undefined') {
+                showToast('更新功能不可用');
+                return;
+            }
+            
+            const btn = document.getElementById('checkUpdateBtn');
+            const status = document.getElementById('updateStatus');
+            
+            btn.disabled = true;
+            btn.textContent = '检查中...';
+            status.textContent = '';
+            
+            try {
+                const result = await updateManager.checkForUpdate(true);
+                
+                if (result.hasUpdate) {
+                    showUpdateModal(result);
+                    status.textContent = `发现新版本: v${result.version}`;
+                    status.style.color = '#f5576c';
+                } else if (result.error) {
+                    status.textContent = '检查失败: ' + result.error;
+                    status.style.color = '#999';
+                } else {
+                    status.textContent = '当前已是最新版本';
+                    status.style.color = '#43e97b';
+                }
+            } catch (err) {
+                status.textContent = '检查出错: ' + err.message;
+                status.style.color = '#999';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '检查更新';
+            }
+        }
+
+        // 显示更新弹窗
+        let currentUpdateInfo = null;
+        
+        function showUpdateModal(updateInfo) {
+            currentUpdateInfo = updateInfo;
+            
+            document.getElementById('updateVersionText').textContent = 'v' + updateInfo.version;
+            document.getElementById('updateChangelog').textContent = updateInfo.changelog || '暂无更新说明';
+            
+            // 重置进度条
+            document.getElementById('updateProgress').style.display = 'none';
+            document.getElementById('updateProgressFill').style.width = '0%';
+            document.getElementById('updateProgressText').textContent = '0%';
+            document.getElementById('updateButtons').style.display = 'flex';
+            
+            const actionBtn = document.getElementById('updateActionBtn');
+            actionBtn.textContent = '立即更新';
+            actionBtn.onclick = startUpdate;
+            
+            document.getElementById('updateOverlay').style.display = 'flex';
+        }
+
+        // 关闭更新弹窗
+        function closeUpdateModal() {
+            document.getElementById('updateOverlay').style.display = 'none';
+            // 取消下载
+            if (typeof updateManager !== 'undefined') {
+                updateManager.cancelDownload();
+            }
+        }
+
+        // 开始更新
+        async function startUpdate() {
+            if (!currentUpdateInfo) return;
+            
+            const actionBtn = document.getElementById('updateActionBtn');
+            const progressDiv = document.getElementById('updateProgress');
+            const progressFill = document.getElementById('updateProgressFill');
+            const progressText = document.getElementById('updateProgressText');
+            
+            actionBtn.disabled = true;
+            actionBtn.textContent = '下载中...';
+            progressDiv.style.display = 'block';
+            
+            try {
+                await updateManager.downloadAndInstall(currentUpdateInfo, (progress, received, total) => {
+                    progressFill.style.width = progress + '%';
+                    const sizeText = total > 0 ? ` (${updateManager.formatFileSize(received)}/${updateManager.formatFileSize(total)})` : '';
+                    progressText.textContent = progress + '%' + sizeText;
+                });
+                
+                // 下载完成
+                progressText.textContent = '下载完成，正在安装...';
+                showToast('更新下载完成，请安装');
+                
+            } catch (err) {
+                if (err.message === '下载已取消') {
+                    progressText.textContent = '下载已取消';
+                } else {
+                    progressText.textContent = '下载失败: ' + err.message;
+                    progressText.style.color = '#f5576c';
+                }
+                actionBtn.disabled = false;
+                actionBtn.textContent = '重试';
+            }
         }
 
         // ===== 会话列表管理 =====
@@ -2962,6 +3237,12 @@
             document.querySelectorAll('#lengthGrid .card-item').forEach(el => {
                 el.classList.toggle('selected', el.dataset.value === currentSettings.reply_length);
             });
+
+            // Update version display
+            const versionText = document.getElementById('currentVersionText');
+            if (versionText && typeof updateManager !== 'undefined') {
+                versionText.textContent = 'v' + updateManager.getCurrentVersion();
+            }
         }
 
         function updateHeaderDisplay() {

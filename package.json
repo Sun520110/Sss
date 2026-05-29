@@ -1,0 +1,27 @@
+{
+  "name": "6a143e226e8be6eba5a62f52",
+  "version": "1.0.0",
+  "description": "",
+  "main": "ai-companion.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sun520110/Sss.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Sun520110/Sss/issues"
+  },
+  "homepage": "https://github.com/Sun520110/Sss#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/filesystem": "^7.0.0"
+  }
+}
