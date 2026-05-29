@@ -1185,6 +1185,35 @@
             font-weight: 600;
         }
 
+        /* ===== Identity Select ===== */
+        .identity-select {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .identity-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 4px;
+            border: 1.5px solid rgba(118, 75, 162, 0.15);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .identity-option .identity-avatar { font-size: 24px; margin-bottom: 4px; }
+        .identity-option .identity-name { font-size: 11px; color: var(--panel-text); text-align: center; line-height: 1.2; }
+        .identity-option .identity-desc { font-size: 9px; color: rgba(74, 53, 72, 0.45); text-align: center; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .identity-option:active { transform: scale(0.95); }
+        .identity-option.selected { border-color: var(--accent); background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%); }
+        .identity-option.selected .identity-name { font-weight: 600; color: var(--accent); }
+        .identity-detail-panel { margin-top: 10px; padding: 10px 12px; background: rgba(118, 75, 162, 0.05); border-radius: var(--radius-md); border-left: 3px solid var(--accent); }
+        .identity-detail-panel h4 { font-size: 13px; color: var(--accent); margin-bottom: 6px; }
+        .identity-detail-item { font-size: 11px; color: var(--panel-text); margin-bottom: 4px; line-height: 1.4; }
+        .identity-detail-item strong { color: var(--accent); font-weight: 500; }
+
         /* ===== Background Customization ===== */
         .bg-custom-section {
             margin-top: 15px;
@@ -2192,6 +2221,11 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label>身份定位</label>
+                    <div class="identity-select" id="identitySelect"></div>
+                    <div class="identity-detail-panel" id="identityDetailPanel" style="display:none;"></div>
+                </div>
+                <div class="form-group">
                     <label>你的昵称</label>
                     <input type="text" class="form-input" id="userNickname" placeholder="输入你的昵称" oninput="onSettingChange()">
                 </div>
@@ -2549,6 +2583,7 @@
             ai_avatar: '🌟',
             ai_avatar_type: 'emoji',
             relationship: 'friend',
+            identity: 'none',
             user_nickname: '',
             user_avatar: '😊',
             user_avatar_type: 'emoji',
@@ -2616,6 +2651,7 @@
             await loadSettings();
             await loadSessions();
             loadRelationships();
+            loadIdentities();
             loadPersonalities();
             loadGreeting();
             loadMemories();
@@ -2881,6 +2917,12 @@
                 el.classList.toggle('selected', el.dataset.value === currentSettings.ai_gender);
             });
 
+            // Identity
+            document.querySelectorAll('#identitySelect .identity-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.value === (currentSettings.identity || 'none'));
+            });
+            updateIdentityDetail(currentSettings.identity || 'none');
+
             // Avatar
             const avatarPreview = document.getElementById('avatarPreviewLarge');
             if (currentSettings.ai_avatar_type === 'image' && currentSettings.ai_avatar) {
@@ -2966,6 +3008,7 @@
                 companion.settings.ai_avatar = currentSettings.ai_avatar;
                 companion.settings.ai_avatar_type = currentSettings.ai_avatar_type;
                 companion.settings.relationship = currentSettings.relationship;
+                companion.settings.identity = currentSettings.identity || 'none';
                 companion.settings.user_name = currentSettings.user_nickname;
                 companion.settings.user_avatar = currentSettings.user_avatar;
                 companion.settings.user_avatar_type = currentSettings.user_avatar_type;
@@ -3166,6 +3209,53 @@
                 div.textContent = rel.icon ? (rel.icon + ' ' + rel.name) : rel.name;
                 container.appendChild(div);
             });
+        }
+
+        // ===== 加载身份定位列表 =====
+        function loadIdentities() {
+            const container = document.getElementById('identitySelect');
+            if (!container) return;
+            container.innerHTML = '';
+            // "默认"选项
+            const noneDiv = document.createElement('div');
+            noneDiv.className = 'identity-option' + (currentSettings.identity === 'none' ? ' selected' : '');
+            noneDiv.dataset.value = 'none';
+            noneDiv.onclick = function() { selectIdentity(this); };
+            noneDiv.innerHTML = '<span class="identity-avatar">🤖</span><span class="identity-name">默认</span><span class="identity-desc">不指定</span>';
+            container.appendChild(noneDiv);
+            // 身份列表
+            const list = typeof IDENTITY_TEMPLATES !== 'undefined' ? IDENTITY_TEMPLATES : [];
+            list.forEach(identity => {
+                const div = document.createElement('div');
+                div.className = 'identity-option' + (identity.id === currentSettings.identity ? ' selected' : '');
+                div.dataset.value = identity.id;
+                div.onclick = function() { selectIdentity(this); };
+                div.innerHTML = '<span class="identity-avatar">' + identity.avatar + '</span><span class="identity-name">' + identity.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() + '</span><span class="identity-desc">' + identity.description + '</span>';
+                container.appendChild(div);
+            });
+        }
+
+        function selectIdentity(el) {
+            el.parentElement.querySelectorAll('.identity-option').forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+            currentSettings.identity = el.dataset.value;
+            updateIdentityDetail(currentSettings.identity);
+            saveSettings();
+        }
+
+        function updateIdentityDetail(identityId) {
+            const panel = document.getElementById('identityDetailPanel');
+            if (!panel) return;
+            if (identityId === 'none') { panel.style.display = 'none'; return; }
+            const list = typeof IDENTITY_TEMPLATES !== 'undefined' ? IDENTITY_TEMPLATES : [];
+            const identity = list.find(i => i.id === identityId);
+            if (!identity) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            panel.innerHTML = '<h4>' + identity.avatar + ' ' + identity.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() + '</h4>' +
+                '<div class="identity-detail-item"><strong>职业：</strong>' + identity.profession + '</div>' +
+                '<div class="identity-detail-item"><strong>性格：</strong>' + identity.personality_traits.join('、') + '</div>' +
+                '<div class="identity-detail-item"><strong>专长：</strong>' + identity.expertise_areas.join('、') + '</div>' +
+                '<div class="identity-detail-item"><strong>说话风格：</strong>' + identity.speaking_style + '</div>';
         }
 
         // ===== Load Personalities =====
