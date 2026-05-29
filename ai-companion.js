@@ -1484,6 +1484,13 @@ class GroupChat {
         return groupId;
     }
 
+    static async renameGroup(groupId, newName) {
+        const gc = new GroupChat(groupId);
+        await gc.initPromise;
+        gc.name = newName;
+        await gc.save();
+    }
+
     static deleteGroup(groupId) {
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);

@@ -3909,18 +3909,52 @@
             groups.forEach(g => {
                 const div = document.createElement('div');
                 div.className = 'session-item';
-                div.onclick = () => openGroupChat(g.id);
                 div.innerHTML = `
-                    <div class="session-avatar" style="font-size:20px;">👥</div>
-                    <div class="session-info">
+                    <div class="session-avatar" style="font-size:20px;" onclick="event.stopPropagation();openGroupChat('${g.id}')">👥</div>
+                    <div class="session-info" onclick="event.stopPropagation();openGroupChat('${g.id}')">
                         <div class="session-name-row">
                             <span class="session-name">${g.name}</span>
                         </div>
                         <div class="session-preview">${g.member_count}人 · ${g.last_message || '暂无消息'}</div>
                     </div>
+                    <div class="session-actions">
+                        <button class="session-action-btn" onclick="event.stopPropagation();renameGroup('${g.id}', '${g.name.replace(/'/g, "\\'")}')" title="重命名">✏️</button>
+                        <button class="session-action-btn" onclick="event.stopPropagation();deleteGroup('${g.id}')" title="删除">🗑️</button>
+                    </div>
                 `;
                 container.appendChild(div);
             });
+        }
+
+        // 重命名群聊
+        async function renameGroup(groupId, currentName) {
+            showPromptDialog('输入新群聊名称：', currentName, async (newName) => {
+                if (!newName || newName === currentName) return;
+                try {
+                    await GroupChat.renameGroup(groupId, newName);
+                    await loadGroupList();
+                    showToast('群聊已重命名');
+                } catch(err) {
+                    console.error('Failed to rename group:', err);
+                    showToast('重命名失败');
+                }
+            });
+        }
+
+        // 删除群聊
+        async function deleteGroup(groupId) {
+            if (!confirm('确定要删除这个群聊吗？所有聊天记录将丢失！')) return;
+            try {
+                await GroupChat.deleteGroup(groupId);
+                if (currentGroupId === groupId) {
+                    goBackToGroupList();
+                }
+                await loadGroupList();
+                showToast('群聊已删除');
+            } catch(err) {
+                console.error('Failed to delete group:', err);
+                showToast('删除失败');
+            }
         }
 
         // 创建群聊
