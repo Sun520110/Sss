@@ -2737,17 +2737,20 @@
         function showListView() {
             document.getElementById('listView').style.display = 'flex';
             document.getElementById('chatView').style.display = 'none';
+            document.getElementById('groupListView').style.display = 'none';
+            document.getElementById('groupChatView').style.display = 'none';
         }
 
         function showChatView() {
             document.getElementById('listView').style.display = 'none';
             document.getElementById('chatView').style.display = 'flex';
+            document.getElementById('groupListView').style.display = 'none';
+            document.getElementById('groupChatView').style.display = 'none';
             history.pushState({ view: 'chat' }, '', '');
         }
 
         async function goBackToList() {
             saveSettings();
-            history.pushState({ view: 'list' }, '', '');
             showListView();
             await loadSessions();
         }
@@ -3797,7 +3800,6 @@
         }
 
         async function goBackToGroupList() {
-            history.pushState({ view: 'grouplist' }, '', '');
             showGroupListView();
             await loadGroupList();
         }
