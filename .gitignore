@@ -46,10 +46,14 @@ Thumbs.db
 *extracted/
 extracted/
 *.apk
+*.apk.idsig
 AI-Companion-Standalone/
 __pycache__/
 *.py[cod]
 *$py.class
+temp/
+*.tmp
+*.temp
 
 # Local data storage
 *.localstorage
