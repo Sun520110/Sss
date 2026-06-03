@@ -2000,6 +2000,387 @@
             color: #666;
         }
 
+        /* ===== Character Card ===== */
+        .character-card-current {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(118, 75, 162, 0.05);
+            border-radius: var(--radius-md);
+            border: 1.5px solid rgba(118, 75, 162, 0.15);
+        }
+        .cc-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .cc-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .cc-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--panel-text);
+            margin-bottom: 2px;
+        }
+        .cc-desc {
+            font-size: 12px;
+            color: rgba(74, 53, 72, 0.6);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cc-change-btn {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .cc-change-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Character Card Manager Overlay */
+        .cc-manager-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .cc-manager-panel {
+            width: 92%;
+            max-width: 440px;
+            max-height: 85vh;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: scaleIn 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .cc-manager-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .cc-manager-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--panel-text);
+        }
+        .cc-manager-stats {
+            font-size: 12px;
+            color: rgba(74, 53, 72, 0.5);
+            margin-top: 2px;
+        }
+        .cc-manager-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(118, 75, 162, 0.1);
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .cc-manager-search {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid rgba(118, 75, 162, 0.15);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            color: var(--panel-text);
+            background: rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+            outline: none;
+            flex-shrink: 0;
+        }
+        .cc-manager-search:focus {
+            border-color: var(--accent);
+        }
+        .cc-manager-search::placeholder {
+            color: rgba(74, 53, 72, 0.35);
+        }
+        .cc-manager-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .cc-manager-btn {
+            flex: 1;
+            padding: 10px 6px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cc-manager-btn:active { transform: scale(0.96); }
+        .cc-manager-btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .cc-manager-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+        .cc-list {
+            overflow-y: auto;
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding-right: 4px;
+        }
+        .cc-list::-webkit-scrollbar { width: 4px; }
+        .cc-list::-webkit-scrollbar-thumb { background: rgba(118,75,162,0.2); border-radius: 2px; }
+        .cc-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px 6px 10px;
+            background: rgba(118, 75, 162, 0.04);
+            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .cc-item:hover {
+            border-color: rgba(240, 147, 251, 0.3);
+            background: rgba(118, 75, 162, 0.08);
+        }
+        .cc-item:active { transform: scale(0.97); }
+        .cc-item.selected {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.15) 0%, rgba(245, 87, 108, 0.1) 100%);
+        }
+        .cc-item-selected-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+        }
+        .cc-item-avatar {
+            width: 52px;
+            height: 52px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%);
+            border-radius: 50%;
+            margin-bottom: 6px;
+        }
+        .cc-item-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--panel-text);
+            text-align: center;
+            margin-bottom: 2px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .cc-item-desc {
+            font-size: 10px;
+            color: rgba(74, 53, 72, 0.45);
+            text-align: center;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            max-width: 100%;
+        }
+        .cc-item-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            justify-content: center;
+            margin-top: 6px;
+        }
+        .cc-item-tag {
+            font-size: 9px;
+            padding: 1px 6px;
+            background: rgba(118, 75, 162, 0.08);
+            color: rgba(74, 53, 72, 0.55);
+            border-radius: 10px;
+        }
+        .cc-item-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        .cc-item-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .cc-item-btn:active { transform: scale(0.95); }
+        .cc-item-btn-use {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .cc-item-btn-detail {
+            background: rgba(118, 75, 162, 0.1);
+            color: #764ba2;
+        }
+        .cc-item-btn-delete {
+            background: #ffebee;
+            color: #f44336;
+        }
+
+        /* Character Card Detail Panel */
+        .cc-detail-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2100;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .cc-detail-panel {
+            width: 100%;
+            max-height: 75vh;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.3s ease;
+            overflow-y: auto;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .cc-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        .cc-detail-avatar {
+            width: 64px;
+            height: 64px;
+            font-size: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .cc-detail-info { flex: 1; }
+        .cc-detail-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--panel-text);
+        }
+        .cc-detail-desc {
+            font-size: 13px;
+            color: rgba(74, 53, 72, 0.6);
+            margin-top: 2px;
+        }
+        .cc-detail-section {
+            margin-top: 14px;
+            padding: 12px;
+            background: rgba(118, 75, 162, 0.04);
+            border-radius: var(--radius-md);
+            border-left: 3px solid var(--accent);
+        }
+        .cc-detail-section h4 {
+            font-size: 13px;
+            color: var(--accent);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .cc-detail-section p {
+            font-size: 12px;
+            color: var(--panel-text);
+            line-height: 1.6;
+            margin: 0;
+        }
+        .cc-detail-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .cc-detail-tag {
+            font-size: 11px;
+            padding: 3px 10px;
+            background: rgba(240, 147, 251, 0.15);
+            color: var(--accent);
+            border-radius: 12px;
+        }
+        .cc-detail-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(118, 75, 162, 0.1);
+        }
+        .cc-detail-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cc-detail-btn:active { transform: scale(0.97); }
+        .cc-detail-btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .cc-detail-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
         /* ===== Mention Panel (@) ===== */
         .mention-backdrop {
             position: fixed;
@@ -2405,6 +2786,25 @@
                 </div>
             </div>
 
+            <!-- 角色卡 -->
+            <div class="settings-section">
+                <h3>🎭 角色卡</h3>
+                <div class="form-group">
+                    <label>当前角色</label>
+                    <div class="character-card-current" id="currentCharacterCard">
+                        <div class="cc-avatar" id="ccCurrentAvatar">🌟</div>
+                        <div class="cc-info">
+                            <div class="cc-name" id="ccCurrentName">小星</div>
+                            <div class="cc-desc" id="ccCurrentDesc">温柔体贴的AI助手</div>
+                        </div>
+                        <button class="cc-change-btn" onclick="openCharacterCardManager()">切换</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button class="btn-secondary" onclick="saveCurrentAsCharacterCard()">💾 保存当前为角色卡</button>
+                </div>
+            </div>
+
             <!-- 应用更新 -->
             <div class="settings-section">
                 <h3>应用更新</h3>
@@ -2607,8 +3007,36 @@
         </div>
     </div>
 
+    <!-- Character Card Manager Overlay -->
+    <div class="cc-manager-overlay" id="ccManagerOverlay" style="display:none;">
+        <div class="cc-manager-panel">
+            <div class="cc-manager-header">
+                <div>
+                    <div class="cc-manager-title">🎭 角色卡管理</div>
+                    <div class="cc-manager-stats" id="ccStats">共 0 个角色</div>
+                </div>
+                <button class="cc-manager-close" onclick="closeCharacterCardManager()">×</button>
+            </div>
+            <input class="cc-manager-search" id="ccSearch" type="text" placeholder="🔍 搜索角色..." oninput="filterCharacterCards()">
+            <div class="cc-manager-actions">
+                <button class="cc-manager-btn cc-manager-btn-primary" onclick="generateRandomCharacter()">✨ 随机生成</button>
+                <button class="cc-manager-btn cc-manager-btn-secondary" onclick="exportCurrentCharacter()">📤 导出</button>
+                <button class="cc-manager-btn cc-manager-btn-secondary" onclick="importCharacter()">📥 导入</button>
+            </div>
+            <div class="cc-list" id="ccList"></div>
+        </div>
+    </div>
+
+    <!-- Character Card Detail Overlay -->
+    <div class="cc-detail-overlay" id="ccDetailOverlay" style="display:none;">
+        <div class="cc-detail-panel" id="ccDetailPanel">
+            <!-- 由JS动态填充 -->
+        </div>
+    </div>
+
     <script src="static/ai-companion.js"></script>
     <script src="static/update-manager.js"></script>
+    <script src="static/character-card.js"></script>
     <script>
         // ===== Unlock System =====
         const UNLOCK_CODE = '110120119';
@@ -2810,6 +3238,12 @@
                 // 延迟2秒后检查更新（避免影响启动速度）
                 setTimeout(() => autoCheckUpdate(), 2000);
             }
+            
+            // 初始化角色卡管理器并渲染当前角色卡
+            if (typeof characterCardManager !== 'undefined') {
+                await characterCardManager.init();
+                renderCurrentCharacterCard();
+            }
         }
 
         // 自动检查更新（静默）
@@ -2931,6 +3365,266 @@
                 actionBtn.disabled = false;
                 actionBtn.textContent = '重试';
             }
+        }
+
+        // ===== 角色卡管理 =====
+        function openCharacterCardManager() {
+            document.getElementById('ccManagerOverlay').style.display = 'flex';
+            renderCharacterCardList();
+        }
+
+        function closeCharacterCardManager() {
+            document.getElementById('ccManagerOverlay').style.display = 'none';
+        }
+
+        function renderCharacterCardList(filter = '') {
+            const container = document.getElementById('ccList');
+            if (!container || typeof characterCardManager === 'undefined') return;
+
+            let cards = characterCardManager.getAllCards();
+            const currentId = characterCardManager.currentCardId;
+
+            // 搜索过滤
+            if (filter) {
+                const q = filter.toLowerCase();
+                cards = cards.filter(c => 
+                    c.name.toLowerCase().includes(q) || 
+                    (c.description || '').toLowerCase().includes(q) ||
+                    (c.personality_traits || []).some(t => t.includes(q))
+                );
+            }
+
+            // 更新统计
+            const statsEl = document.getElementById('ccStats');
+            if (statsEl) {
+                const total = characterCardManager.getAllCards().length;
+                statsEl.textContent = filter 
+                    ? `找到 ${cards.length} / ${total} 个角色` 
+                    : `共 ${total} 个角色`;
+            }
+
+            if (cards.length === 0) {
+                container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:rgba(74,53,72,0.4);font-size:14px;">' + (filter ? '没有找到匹配的角色' : '暂无角色卡，点击"随机生成"创建') + '</div>';
+                return;
+            }
+
+            container.innerHTML = cards.map(card => {
+                const isSelected = card.id === currentId;
+                const tags = (card.personality_traits || []).slice(0, 2);
+                const genderIcon = card.ai_gender === 'male' ? '♂' : card.ai_gender === 'nonbinary' ? '⚧' : '♀';
+                
+                return `
+                <div class="cc-item ${isSelected ? 'selected' : ''}" data-id="${card.id}" onclick="showCharacterCardDetail('${card.id}')">
+                    ${isSelected ? '<div class="cc-item-selected-badge">✓</div>' : ''}
+                    <div class="cc-item-avatar">${card.avatar}</div>
+                    <div class="cc-item-name">${card.name}</div>
+                    <div class="cc-item-desc">${card.description || '暂无描述'}</div>
+                    ${tags.length > 0 ? `<div class="cc-item-tags">${tags.map(t => `<span class="cc-item-tag">${t}</span>`).join('')}</div>` : ''}
+                    <div class="cc-item-actions">
+                        <button class="cc-item-btn cc-item-btn-use" onclick="event.stopPropagation();useCharacterCard('${card.id}')">使用</button>
+                        <button class="cc-item-btn cc-item-btn-detail" onclick="event.stopPropagation();showCharacterCardDetail('${card.id}')">详情</button>
+                        ${!card.is_built_in ? `<button class="cc-item-btn cc-item-btn-delete" onclick="event.stopPropagation();deleteCharacterCard('${card.id}')">删除</button>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterCharacterCards() {
+            const search = document.getElementById('ccSearch');
+            renderCharacterCardList(search ? search.value.trim() : '');
+        }
+
+        function showCharacterCardDetail(cardId) {
+            if (typeof characterCardManager === 'undefined') return;
+            const card = characterCardManager.getCard(cardId);
+            if (!card) return;
+
+            const panel = document.getElementById('ccDetailPanel');
+            const genderText = card.ai_gender === 'male' ? '男' : card.ai_gender === 'nonbinary' ? '中性' : '女';
+            const identityName = card.identity && card.identity !== 'none' && typeof IDENTITY_TEMPLATES !== 'undefined' 
+                ? IDENTITY_TEMPLATES.find(i => i.id === card.identity)?.name?.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || '' 
+                : '';
+            const personalityName = card.personality_id && typeof PERSONALITY_TEMPLATES !== 'undefined'
+                ? PERSONALITY_TEMPLATES.find(p => p.id === card.personality_id)?.name?.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || ''
+                : '';
+            const isSelected = card.id === characterCardManager.currentCardId;
+
+            panel.innerHTML = `
+                <div class="cc-detail-header">
+                    <div class="cc-detail-avatar">${card.avatar}</div>
+                    <div class="cc-detail-info">
+                        <div class="cc-detail-name">${card.name}</div>
+                        <div class="cc-detail-desc">${card.description || '暂无描述'}</div>
+                    </div>
+                </div>
+
+                ${card.backstory ? `
+                <div class="cc-detail-section">
+                    <h4>📖 背景故事</h4>
+                    <p>${card.backstory}</p>
+                </div>` : ''}
+
+                ${card.personality_traits && card.personality_traits.length > 0 ? `
+                <div class="cc-detail-section">
+                    <h4>🎭 性格特点</h4>
+                    <div class="cc-detail-tags">
+                        ${card.personality_traits.map(t => `<span class="cc-detail-tag">${t}</span>`).join('')}
+                    </div>
+                </div>` : ''}
+
+                ${card.speaking_style ? `
+                <div class="cc-detail-section">
+                    <h4>💬 说话风格</h4>
+                    <p>${card.speaking_style}</p>
+                </div>` : ''}
+
+                ${card.expertise_areas && card.expertise_areas.length > 0 ? `
+                <div class="cc-detail-section">
+                    <h4>⭐ 专长领域</h4>
+                    <div class="cc-detail-tags">
+                        ${card.expertise_areas.map(a => `<span class="cc-detail-tag">${a}</span>`).join('')}
+                    </div>
+                </div>` : ''}
+
+                ${card.greeting ? `
+                <div class="cc-detail-section">
+                    <h4>👋 问候语</h4>
+                    <p>${card.greeting}</p>
+                </div>` : ''}
+
+                <div class="cc-detail-section">
+                    <h4>📋 基本信息</h4>
+                    <p>性别：${genderText} ${identityName ? '· 身份：' + identityName : ''} ${personalityName ? '· 性格：' + personalityName : ''}</p>
+                </div>
+
+                <div class="cc-detail-actions">
+                    ${isSelected 
+                        ? '<button class="cc-detail-btn cc-detail-btn-secondary" disabled style="opacity:0.5">当前使用中</button>' 
+                        : `<button class="cc-detail-btn cc-detail-btn-primary" onclick="useCharacterCard('${card.id}');closeCharacterCardDetail();">使用此角色</button>`
+                    }
+                    <button class="cc-detail-btn cc-detail-btn-secondary" onclick="closeCharacterCardDetail()">关闭</button>
+                </div>
+            `;
+
+            document.getElementById('ccDetailOverlay').style.display = 'flex';
+        }
+
+        function closeCharacterCardDetail() {
+            document.getElementById('ccDetailOverlay').style.display = 'none';
+        }
+
+        function renderCurrentCharacterCard() {
+            if (typeof characterCardManager === 'undefined') return;
+            const card = characterCardManager.getCurrentCard();
+            if (card) {
+                document.getElementById('ccCurrentAvatar').textContent = card.avatar;
+                document.getElementById('ccCurrentName').textContent = card.name;
+                document.getElementById('ccCurrentDesc').textContent = card.description || '暂无描述';
+            }
+        }
+
+        async function useCharacterCard(cardId) {
+            if (typeof companion === 'undefined' || typeof characterCardManager === 'undefined') return;
+            
+            try {
+                await companion.applyCharacterCard(cardId);
+                renderCurrentCharacterCard();
+                renderCharacterCardList();
+                closeCharacterCardManager();
+                showToast(`已切换到角色: ${characterCardManager.getCard(cardId)?.name}`);
+                
+                // 更新UI显示
+                updateHeaderAvatar();
+                loadGreeting();
+            } catch (err) {
+                console.error('切换角色卡失败:', err);
+                showToast('切换失败');
+            }
+        }
+
+        async function deleteCharacterCard(cardId) {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const card = characterCardManager.getCard(cardId);
+            if (!card) return;
+            
+            if (!confirm(`确定要删除角色卡 "${card.name}" 吗？`)) return;
+            
+            try {
+                characterCardManager.deleteCard(cardId);
+                renderCharacterCardList();
+                renderCurrentCharacterCard();
+                showToast('角色卡已删除');
+            } catch (err) {
+                console.error('删除角色卡失败:', err);
+                showToast(err.message || '删除失败');
+            }
+        }
+
+        function generateRandomCharacter() {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const card = characterCardManager.generateRandomCard();
+            renderCharacterCardList();
+            showToast(`已生成新角色: ${card.name}`);
+        }
+
+        async function saveCurrentAsCharacterCard() {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const name = prompt('请输入角色卡名称:', companion?.settings?.ai_name || '新角色');
+            if (!name) return;
+            
+            try {
+                const card = characterCardManager.saveCurrentAsCard(name, '自定义角色');
+                renderCurrentCharacterCard();
+                showToast(`已保存角色卡: ${card.name}`);
+            } catch (err) {
+                console.error('保存角色卡失败:', err);
+                showToast('保存失败');
+            }
+        }
+
+        function exportCurrentCharacter() {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const card = characterCardManager.getCurrentCard();
+            if (!card) {
+                showToast('没有可导出的角色');
+                return;
+            }
+            
+            const data = characterCardManager.exportCard(card.id);
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `character-${card.name}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('角色卡已导出');
+        }
+
+        function importCharacter() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    const card = characterCardManager.importCard(data);
+                    renderCharacterCardList();
+                    showToast(`已导入角色卡: ${card.name}`);
+                } catch (err) {
+                    console.error('导入角色卡失败:', err);
+                    showToast('导入失败: ' + err.message);
+                }
+            };
+            input.click();
         }
 
         // ===== 会话列表管理 =====

@@ -57,6 +57,17 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Allow text selection on inputs and message content */
+        input, textarea, .msg-content, .form-input {
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         body {
@@ -260,11 +271,13 @@
             align-items: center;
             gap: 12px;
             padding: 14px 16px;
+            min-height: 64px;
             background: rgba(255, 255, 255, 0.6);
             cursor: pointer;
             transition: background 0.15s;
             position: relative;
             border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .session-item:active {
@@ -364,13 +377,13 @@
         }
 
         .session-action-btn {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border: none;
             background: rgba(255, 255, 255, 0.8);
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -528,8 +541,8 @@
         }
 
         .header-btn {
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             border: none;
             background: rgba(255, 255, 255, 0.2);
@@ -540,6 +553,7 @@
             align-items: center;
             justify-content: center;
             transition: all var(--transition-fast);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .header-btn:hover {
@@ -561,6 +575,7 @@
             gap: 12px;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
 
         .chat-area::-webkit-scrollbar {
@@ -786,6 +801,7 @@
 
         /* ===== Input Area ===== */
         .input-area {
+            position: relative;
             padding: 10px 16px;
             padding-bottom: calc(10px + var(--safe-bottom));
             background: var(--header-bg);
@@ -923,18 +939,19 @@
         }
 
         .settings-close {
-            width: 32px;
-            height: 32px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             border: none;
             background: rgba(118, 75, 162, 0.08);
             color: var(--panel-text);
-            font-size: 20px;
+            font-size: 24px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all var(--transition-fast);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .settings-close:hover {
@@ -1167,6 +1184,35 @@
             background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%);
             font-weight: 600;
         }
+
+        /* ===== Identity Select ===== */
+        .identity-select {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .identity-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 4px;
+            border: 1.5px solid rgba(118, 75, 162, 0.15);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .identity-option .identity-avatar { font-size: 24px; margin-bottom: 4px; }
+        .identity-option .identity-name { font-size: 11px; color: var(--panel-text); text-align: center; line-height: 1.2; }
+        .identity-option .identity-desc { font-size: 9px; color: rgba(74, 53, 72, 0.45); text-align: center; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .identity-option:active { transform: scale(0.95); }
+        .identity-option.selected { border-color: var(--accent); background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%); }
+        .identity-option.selected .identity-name { font-weight: 600; color: var(--accent); }
+        .identity-detail-panel { margin-top: 10px; padding: 10px 12px; background: rgba(118, 75, 162, 0.05); border-radius: var(--radius-md); border-left: 3px solid var(--accent); }
+        .identity-detail-panel h4 { font-size: 13px; color: var(--accent); margin-bottom: 6px; }
+        .identity-detail-item { font-size: 11px; color: var(--panel-text); margin-bottom: 4px; line-height: 1.4; }
+        .identity-detail-item strong { color: var(--accent); font-weight: 500; }
 
         /* ===== Background Customization ===== */
         .bg-custom-section {
@@ -1769,6 +1815,626 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* ===== Prompt Dialog ===== */
+        .prompt-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .prompt-dialog {
+            background: #2d1f3a;
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            width: 85%;
+            max-width: 340px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            animation: scaleIn 0.25s ease;
+        }
+        .prompt-dialog-title {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .prompt-dialog-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color var(--transition-fast);
+        }
+        .prompt-dialog-input:focus {
+            border-color: var(--primary);
+        }
+        .prompt-dialog-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .prompt-dialog-btn {
+            flex: 1;
+            padding: 11px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity var(--transition-fast);
+        }
+        .prompt-dialog-btn:active {
+            opacity: 0.8;
+        }
+        .prompt-dialog-btn.cancel {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.7);
+        }
+        .prompt-dialog-btn.confirm {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: #fff;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* ===== Update Modal ===== */
+        .update-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .update-panel {
+            width: 90%;
+            max-width: 360px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: scaleIn 0.3s ease;
+        }
+        .update-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .update-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 16px;
+        }
+        .update-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #4a3548;
+            margin-bottom: 4px;
+        }
+        .update-version {
+            font-size: 14px;
+            color: #f5576c;
+            font-weight: 600;
+        }
+        .update-changelog {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 16px 0;
+            padding: 16px;
+            background: #f8f8f8;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #666;
+            white-space: pre-wrap;
+        }
+        .update-progress {
+            margin: 20px 0;
+        }
+        .update-progress-bar {
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .update-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .update-progress-text {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        .update-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .update-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .update-btn:active {
+            transform: scale(0.98);
+        }
+        .update-btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .update-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        /* ===== Character Card ===== */
+        .character-card-current {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(118, 75, 162, 0.05);
+            border-radius: var(--radius-md);
+            border: 1.5px solid rgba(118, 75, 162, 0.15);
+        }
+        .cc-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .cc-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .cc-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--panel-text);
+            margin-bottom: 2px;
+        }
+        .cc-desc {
+            font-size: 12px;
+            color: rgba(74, 53, 72, 0.6);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cc-change-btn {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .cc-change-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Character Card Manager Overlay */
+        .cc-manager-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .cc-manager-panel {
+            width: 92%;
+            max-width: 440px;
+            max-height: 85vh;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: scaleIn 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .cc-manager-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .cc-manager-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--panel-text);
+        }
+        .cc-manager-stats {
+            font-size: 12px;
+            color: rgba(74, 53, 72, 0.5);
+            margin-top: 2px;
+        }
+        .cc-manager-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(118, 75, 162, 0.1);
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .cc-manager-search {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid rgba(118, 75, 162, 0.15);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            color: var(--panel-text);
+            background: rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+            outline: none;
+            flex-shrink: 0;
+        }
+        .cc-manager-search:focus {
+            border-color: var(--accent);
+        }
+        .cc-manager-search::placeholder {
+            color: rgba(74, 53, 72, 0.35);
+        }
+        .cc-manager-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .cc-manager-btn {
+            flex: 1;
+            padding: 10px 6px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cc-manager-btn:active { transform: scale(0.96); }
+        .cc-manager-btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .cc-manager-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+        .cc-list {
+            overflow-y: auto;
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding-right: 4px;
+        }
+        .cc-list::-webkit-scrollbar { width: 4px; }
+        .cc-list::-webkit-scrollbar-thumb { background: rgba(118,75,162,0.2); border-radius: 2px; }
+        .cc-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px 6px 10px;
+            background: rgba(118, 75, 162, 0.04);
+            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .cc-item:hover {
+            border-color: rgba(240, 147, 251, 0.3);
+            background: rgba(118, 75, 162, 0.08);
+        }
+        .cc-item:active { transform: scale(0.97); }
+        .cc-item.selected {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.15) 0%, rgba(245, 87, 108, 0.1) 100%);
+        }
+        .cc-item-selected-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+        }
+        .cc-item-avatar {
+            width: 52px;
+            height: 52px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%);
+            border-radius: 50%;
+            margin-bottom: 6px;
+        }
+        .cc-item-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--panel-text);
+            text-align: center;
+            margin-bottom: 2px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .cc-item-desc {
+            font-size: 10px;
+            color: rgba(74, 53, 72, 0.45);
+            text-align: center;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            max-width: 100%;
+        }
+        .cc-item-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            justify-content: center;
+            margin-top: 6px;
+        }
+        .cc-item-tag {
+            font-size: 9px;
+            padding: 1px 6px;
+            background: rgba(118, 75, 162, 0.08);
+            color: rgba(74, 53, 72, 0.55);
+            border-radius: 10px;
+        }
+        .cc-item-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        .cc-item-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .cc-item-btn:active { transform: scale(0.95); }
+        .cc-item-btn-use {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .cc-item-btn-detail {
+            background: rgba(118, 75, 162, 0.1);
+            color: #764ba2;
+        }
+        .cc-item-btn-delete {
+            background: #ffebee;
+            color: #f44336;
+        }
+
+        /* Character Card Detail Panel */
+        .cc-detail-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2100;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .cc-detail-panel {
+            width: 100%;
+            max-height: 75vh;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.3s ease;
+            overflow-y: auto;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .cc-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        .cc-detail-avatar {
+            width: 64px;
+            height: 64px;
+            font-size: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.15) 100%);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .cc-detail-info { flex: 1; }
+        .cc-detail-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--panel-text);
+        }
+        .cc-detail-desc {
+            font-size: 13px;
+            color: rgba(74, 53, 72, 0.6);
+            margin-top: 2px;
+        }
+        .cc-detail-section {
+            margin-top: 14px;
+            padding: 12px;
+            background: rgba(118, 75, 162, 0.04);
+            border-radius: var(--radius-md);
+            border-left: 3px solid var(--accent);
+        }
+        .cc-detail-section h4 {
+            font-size: 13px;
+            color: var(--accent);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .cc-detail-section p {
+            font-size: 12px;
+            color: var(--panel-text);
+            line-height: 1.6;
+            margin: 0;
+        }
+        .cc-detail-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .cc-detail-tag {
+            font-size: 11px;
+            padding: 3px 10px;
+            background: rgba(240, 147, 251, 0.15);
+            color: var(--accent);
+            border-radius: 12px;
+        }
+        .cc-detail-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(118, 75, 162, 0.1);
+        }
+        .cc-detail-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cc-detail-btn:active { transform: scale(0.97); }
+        .cc-detail-btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .cc-detail-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        /* ===== Mention Panel (@) ===== */
+        .mention-backdrop {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 210;
+            display: none;
+        }
+        .mention-backdrop.show { display: block; }
+        .mention-panel {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(45,31,58,0.97);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            max-height: 50vh;
+            overflow-y: auto;
+            z-index: 211;
+            backdrop-filter: blur(12px);
+            padding-bottom: var(--safe-bottom);
+            display: none;
+            animation: slideUp 0.2s ease;
+        }
+        .mention-panel.show { display: block; }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .mention-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background var(--transition-fast);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            min-height: 56px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mention-item:last-child { border-bottom: none; }
+        .mention-item:active, .mention-item.selected { background: rgba(103,58,183,0.4); }
+        .mention-item .m-avatar { font-size: 28px; width: 40px; text-align: center; }
+        .mention-item .m-info { flex: 1; }
+        .mention-item .m-name { color: #fff; font-size: 15px; font-weight: 500; }
+        .mention-item .m-role { color: rgba(255,255,255,0.5); font-size: 12px; }
+
+        /* @ mention highlight in messages */
+        .msg-mention {
+            color: #ffd54f;
+            font-weight: 600;
+            background: rgba(255,213,79,0.12);
+            padding: 0 3px;
+            border-radius: 3px;
+        }
+
         /* ===== Responsive ===== */
         @media (max-width: 480px) {
             .settings-panel {
@@ -1977,7 +2643,15 @@
                 <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
             </div>
             <div class="input-area">
-                <textarea id="groupMessageInput" placeholder="发消息或@某人..." onkeydown="handleGroupInputKeydown(event)" oninput="autoResize(this)"></textarea>
+                <div class="mention-backdrop" id="mentionBackdrop" onclick="closeMentionPanel()"></div>
+                <div class="mention-panel" id="mentionPanel">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:#fff;font-size:15px;font-weight:600;">选择要@的成员</span>
+                        <button onclick="closeMentionPanel()" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:22px;padding:4px 8px;cursor:pointer;">✕</button>
+                    </div>
+                    <div id="mentionItemList"></div>
+                </div>
+                <textarea id="groupMessageInput" placeholder="发消息或@某人..." onkeydown="handleGroupInputKeydown(event)" oninput="handleGroupInputChange(event)"></textarea>
                 <button class="send-btn" id="groupSendBtn" onclick="sendGroupMessage()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
                 </button>
@@ -2033,6 +2707,11 @@
                     <label>关系定位</label>
                     <div class="relationship-select" id="relationshipSelect">
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>身份定位</label>
+                    <div class="identity-select" id="identitySelect"></div>
+                    <div class="identity-detail-panel" id="identityDetailPanel" style="display:none;"></div>
                 </div>
                 <div class="form-group">
                     <label>你的昵称</label>
@@ -2104,6 +2783,40 @@
                         <option value="deepseek-v4-flash">DeepSeek V4 Flash（快速响应）</option>
                         <option value="deepseek-v4-pro">DeepSeek V4 Pro（专业级）</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- 角色卡 -->
+            <div class="settings-section">
+                <h3>🎭 角色卡</h3>
+                <div class="form-group">
+                    <label>当前角色</label>
+                    <div class="character-card-current" id="currentCharacterCard">
+                        <div class="cc-avatar" id="ccCurrentAvatar">🌟</div>
+                        <div class="cc-info">
+                            <div class="cc-name" id="ccCurrentName">小星</div>
+                            <div class="cc-desc" id="ccCurrentDesc">温柔体贴的AI助手</div>
+                        </div>
+                        <button class="cc-change-btn" onclick="openCharacterCardManager()">切换</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button class="btn-secondary" onclick="saveCurrentAsCharacterCard()">💾 保存当前为角色卡</button>
+                </div>
+            </div>
+
+            <!-- 应用更新 -->
+            <div class="settings-section">
+                <h3>应用更新</h3>
+                <div class="form-group">
+                    <div class="form-row" style="justify-content: space-between; align-items: center;">
+                        <div>
+                            <div class="form-label">当前版本</div>
+                            <div class="form-hint" id="currentVersionText">v1.2.0</div>
+                        </div>
+                        <button class="btn-secondary" id="checkUpdateBtn" onclick="checkForAppUpdate()">检查更新</button>
+                    </div>
+                    <div id="updateStatus" style="margin-top: 8px; font-size: 13px; color: #666;"></div>
                 </div>
             </div>
 
@@ -2270,7 +2983,60 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <!-- Update Modal -->
+    <div class="update-overlay" id="updateOverlay" style="display:none;">
+        <div class="update-panel">
+            <div class="update-header">
+                <div class="update-icon">📦</div>
+                <div class="update-title">发现新版本</div>
+                <div class="update-version" id="updateVersionText">v1.3.0</div>
+            </div>
+            <div class="update-changelog" id="updateChangelog">
+                <!-- 更新日志内容 -->
+            </div>
+            <div class="update-progress" id="updateProgress" style="display:none;">
+                <div class="update-progress-bar">
+                    <div class="update-progress-fill" id="updateProgressFill" style="width:0%"></div>
+                </div>
+                <div class="update-progress-text" id="updateProgressText">0%</div>
+            </div>
+            <div class="update-buttons" id="updateButtons">
+                <button class="update-btn update-btn-secondary" onclick="closeUpdateModal()">稍后提醒</button>
+                <button class="update-btn update-btn-primary" id="updateActionBtn" onclick="startUpdate()">立即更新</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Card Manager Overlay -->
+    <div class="cc-manager-overlay" id="ccManagerOverlay" style="display:none;">
+        <div class="cc-manager-panel">
+            <div class="cc-manager-header">
+                <div>
+                    <div class="cc-manager-title">🎭 角色卡管理</div>
+                    <div class="cc-manager-stats" id="ccStats">共 0 个角色</div>
+                </div>
+                <button class="cc-manager-close" onclick="closeCharacterCardManager()">×</button>
+            </div>
+            <input class="cc-manager-search" id="ccSearch" type="text" placeholder="🔍 搜索角色..." oninput="filterCharacterCards()">
+            <div class="cc-manager-actions">
+                <button class="cc-manager-btn cc-manager-btn-primary" onclick="generateRandomCharacter()">✨ 随机生成</button>
+                <button class="cc-manager-btn cc-manager-btn-secondary" onclick="exportCurrentCharacter()">📤 导出</button>
+                <button class="cc-manager-btn cc-manager-btn-secondary" onclick="importCharacter()">📥 导入</button>
+            </div>
+            <div class="cc-list" id="ccList"></div>
+        </div>
+    </div>
+
+    <!-- Character Card Detail Overlay -->
+    <div class="cc-detail-overlay" id="ccDetailOverlay" style="display:none;">
+        <div class="cc-detail-panel" id="ccDetailPanel">
+            <!-- 由JS动态填充 -->
+        </div>
+    </div>
+
     <script src="static/ai-companion.js"></script>
+    <script src="static/update-manager.js"></script>
+    <script src="static/character-card.js"></script>
     <script>
         // ===== Unlock System =====
         const UNLOCK_CODE = '110120119';
@@ -2392,6 +3158,7 @@
             ai_avatar: '🌟',
             ai_avatar_type: 'emoji',
             relationship: 'friend',
+            identity: 'none',
             user_nickname: '',
             user_avatar: '😊',
             user_avatar_type: 'emoji',
@@ -2431,7 +3198,19 @@
         };
 
         // ===== Initialization =====
+        function calibrateSafeArea() {
+            // iOS: env(safe-area-inset-top) 自动工作
+            // Android Capacitor: env() 不被支持，需手动设置 24dp
+            // Web 浏览器: safe-area 为 0，不需额外 padding
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            if (isAndroid) {
+                document.documentElement.style.setProperty('--safe-top', '24px');
+            }
+        }
+
         async function init() {
+            // 校准安全区域（修复 Android 状态栏重叠）
+            calibrateSafeArea();
             // 先检查解锁状态
             if (!checkUnlockStatus()) {
                 // 未解锁，等待用户输入解锁码
@@ -2447,10 +3226,405 @@
             await loadSettings();
             await loadSessions();
             loadRelationships();
+            loadIdentities();
             loadPersonalities();
             loadGreeting();
             loadMemories();
             loadChatHistory();
+            
+            // 初始化更新管理器并自动检查更新
+            if (typeof updateManager !== 'undefined') {
+                await updateManager.init();
+                // 延迟2秒后检查更新（避免影响启动速度）
+                setTimeout(() => autoCheckUpdate(), 2000);
+            }
+            
+            // 初始化角色卡管理器并渲染当前角色卡
+            if (typeof characterCardManager !== 'undefined') {
+                await characterCardManager.init();
+                renderCurrentCharacterCard();
+            }
+        }
+
+        // 自动检查更新（静默）
+        async function autoCheckUpdate() {
+            if (typeof updateManager === 'undefined') return;
+            
+            // 只在非首次启动时自动检查
+            const hasLaunched = localStorage.getItem('ai_companion_has_launched');
+            if (!hasLaunched) {
+                localStorage.setItem('ai_companion_has_launched', 'true');
+                return;
+            }
+            
+            const result = await updateManager.checkForUpdate(false);
+            if (result.hasUpdate && !updateManager.isIgnored(result.version)) {
+                showUpdateModal(result);
+            }
+        }
+
+        // 手动检查更新
+        async function checkForAppUpdate() {
+            if (typeof updateManager === 'undefined') {
+                showToast('更新功能不可用');
+                return;
+            }
+            
+            const btn = document.getElementById('checkUpdateBtn');
+            const status = document.getElementById('updateStatus');
+            
+            btn.disabled = true;
+            btn.textContent = '检查中...';
+            status.textContent = '';
+            
+            try {
+                const result = await updateManager.checkForUpdate(true);
+                
+                if (result.hasUpdate) {
+                    showUpdateModal(result);
+                    status.textContent = `发现新版本: v${result.version}`;
+                    status.style.color = '#f5576c';
+                } else if (result.error) {
+                    status.textContent = '检查失败: ' + result.error;
+                    status.style.color = '#999';
+                } else {
+                    status.textContent = '当前已是最新版本';
+                    status.style.color = '#43e97b';
+                }
+            } catch (err) {
+                status.textContent = '检查出错: ' + err.message;
+                status.style.color = '#999';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '检查更新';
+            }
+        }
+
+        // 显示更新弹窗
+        let currentUpdateInfo = null;
+        
+        function showUpdateModal(updateInfo) {
+            currentUpdateInfo = updateInfo;
+            
+            document.getElementById('updateVersionText').textContent = 'v' + updateInfo.version;
+            document.getElementById('updateChangelog').textContent = updateInfo.changelog || '暂无更新说明';
+            
+            // 重置进度条
+            document.getElementById('updateProgress').style.display = 'none';
+            document.getElementById('updateProgressFill').style.width = '0%';
+            document.getElementById('updateProgressText').textContent = '0%';
+            document.getElementById('updateButtons').style.display = 'flex';
+            
+            const actionBtn = document.getElementById('updateActionBtn');
+            actionBtn.textContent = '立即更新';
+            actionBtn.onclick = startUpdate;
+            
+            document.getElementById('updateOverlay').style.display = 'flex';
+        }
+
+        // 关闭更新弹窗
+        function closeUpdateModal() {
+            document.getElementById('updateOverlay').style.display = 'none';
+            // 取消下载
+            if (typeof updateManager !== 'undefined') {
+                updateManager.cancelDownload();
+            }
+        }
+
+        // 开始更新
+        async function startUpdate() {
+            if (!currentUpdateInfo) return;
+            
+            const actionBtn = document.getElementById('updateActionBtn');
+            const progressDiv = document.getElementById('updateProgress');
+            const progressFill = document.getElementById('updateProgressFill');
+            const progressText = document.getElementById('updateProgressText');
+            
+            actionBtn.disabled = true;
+            actionBtn.textContent = '下载中...';
+            progressDiv.style.display = 'block';
+            
+            try {
+                await updateManager.downloadAndInstall(currentUpdateInfo, (progress, received, total) => {
+                    progressFill.style.width = progress + '%';
+                    const sizeText = total > 0 ? ` (${updateManager.formatFileSize(received)}/${updateManager.formatFileSize(total)})` : '';
+                    progressText.textContent = progress + '%' + sizeText;
+                });
+                
+                // 下载完成
+                progressText.textContent = '下载完成，正在安装...';
+                showToast('更新下载完成，请安装');
+                
+            } catch (err) {
+                if (err.message === '下载已取消') {
+                    progressText.textContent = '下载已取消';
+                } else {
+                    progressText.textContent = '下载失败: ' + err.message;
+                    progressText.style.color = '#f5576c';
+                }
+                actionBtn.disabled = false;
+                actionBtn.textContent = '重试';
+            }
+        }
+
+        // ===== 角色卡管理 =====
+        function openCharacterCardManager() {
+            document.getElementById('ccManagerOverlay').style.display = 'flex';
+            renderCharacterCardList();
+        }
+
+        function closeCharacterCardManager() {
+            document.getElementById('ccManagerOverlay').style.display = 'none';
+        }
+
+        function renderCharacterCardList(filter = '') {
+            const container = document.getElementById('ccList');
+            if (!container || typeof characterCardManager === 'undefined') return;
+
+            let cards = characterCardManager.getAllCards();
+            const currentId = characterCardManager.currentCardId;
+
+            // 搜索过滤
+            if (filter) {
+                const q = filter.toLowerCase();
+                cards = cards.filter(c => 
+                    c.name.toLowerCase().includes(q) || 
+                    (c.description || '').toLowerCase().includes(q) ||
+                    (c.personality_traits || []).some(t => t.includes(q))
+                );
+            }
+
+            // 更新统计
+            const statsEl = document.getElementById('ccStats');
+            if (statsEl) {
+                const total = characterCardManager.getAllCards().length;
+                statsEl.textContent = filter 
+                    ? `找到 ${cards.length} / ${total} 个角色` 
+                    : `共 ${total} 个角色`;
+            }
+
+            if (cards.length === 0) {
+                container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:rgba(74,53,72,0.4);font-size:14px;">' + (filter ? '没有找到匹配的角色' : '暂无角色卡，点击"随机生成"创建') + '</div>';
+                return;
+            }
+
+            container.innerHTML = cards.map(card => {
+                const isSelected = card.id === currentId;
+                const tags = (card.personality_traits || []).slice(0, 2);
+                const genderIcon = card.ai_gender === 'male' ? '♂' : card.ai_gender === 'nonbinary' ? '⚧' : '♀';
+                
+                return `
+                <div class="cc-item ${isSelected ? 'selected' : ''}" data-id="${card.id}" onclick="showCharacterCardDetail('${card.id}')">
+                    ${isSelected ? '<div class="cc-item-selected-badge">✓</div>' : ''}
+                    <div class="cc-item-avatar">${card.avatar}</div>
+                    <div class="cc-item-name">${card.name}</div>
+                    <div class="cc-item-desc">${card.description || '暂无描述'}</div>
+                    ${tags.length > 0 ? `<div class="cc-item-tags">${tags.map(t => `<span class="cc-item-tag">${t}</span>`).join('')}</div>` : ''}
+                    <div class="cc-item-actions">
+                        <button class="cc-item-btn cc-item-btn-use" onclick="event.stopPropagation();useCharacterCard('${card.id}')">使用</button>
+                        <button class="cc-item-btn cc-item-btn-detail" onclick="event.stopPropagation();showCharacterCardDetail('${card.id}')">详情</button>
+                        ${!card.is_built_in ? `<button class="cc-item-btn cc-item-btn-delete" onclick="event.stopPropagation();deleteCharacterCard('${card.id}')">删除</button>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterCharacterCards() {
+            const search = document.getElementById('ccSearch');
+            renderCharacterCardList(search ? search.value.trim() : '');
+        }
+
+        function showCharacterCardDetail(cardId) {
+            if (typeof characterCardManager === 'undefined') return;
+            const card = characterCardManager.getCard(cardId);
+            if (!card) return;
+
+            const panel = document.getElementById('ccDetailPanel');
+            const genderText = card.ai_gender === 'male' ? '男' : card.ai_gender === 'nonbinary' ? '中性' : '女';
+            const identityName = card.identity && card.identity !== 'none' && typeof IDENTITY_TEMPLATES !== 'undefined' 
+                ? IDENTITY_TEMPLATES.find(i => i.id === card.identity)?.name?.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || '' 
+                : '';
+            const personalityName = card.personality_id && typeof PERSONALITY_TEMPLATES !== 'undefined'
+                ? PERSONALITY_TEMPLATES.find(p => p.id === card.personality_id)?.name?.replace(/^[^\u4e00-\u9fa5]+/, '').trim() || ''
+                : '';
+            const isSelected = card.id === characterCardManager.currentCardId;
+
+            panel.innerHTML = `
+                <div class="cc-detail-header">
+                    <div class="cc-detail-avatar">${card.avatar}</div>
+                    <div class="cc-detail-info">
+                        <div class="cc-detail-name">${card.name}</div>
+                        <div class="cc-detail-desc">${card.description || '暂无描述'}</div>
+                    </div>
+                </div>
+
+                ${card.backstory ? `
+                <div class="cc-detail-section">
+                    <h4>📖 背景故事</h4>
+                    <p>${card.backstory}</p>
+                </div>` : ''}
+
+                ${card.personality_traits && card.personality_traits.length > 0 ? `
+                <div class="cc-detail-section">
+                    <h4>🎭 性格特点</h4>
+                    <div class="cc-detail-tags">
+                        ${card.personality_traits.map(t => `<span class="cc-detail-tag">${t}</span>`).join('')}
+                    </div>
+                </div>` : ''}
+
+                ${card.speaking_style ? `
+                <div class="cc-detail-section">
+                    <h4>💬 说话风格</h4>
+                    <p>${card.speaking_style}</p>
+                </div>` : ''}
+
+                ${card.expertise_areas && card.expertise_areas.length > 0 ? `
+                <div class="cc-detail-section">
+                    <h4>⭐ 专长领域</h4>
+                    <div class="cc-detail-tags">
+                        ${card.expertise_areas.map(a => `<span class="cc-detail-tag">${a}</span>`).join('')}
+                    </div>
+                </div>` : ''}
+
+                ${card.greeting ? `
+                <div class="cc-detail-section">
+                    <h4>👋 问候语</h4>
+                    <p>${card.greeting}</p>
+                </div>` : ''}
+
+                <div class="cc-detail-section">
+                    <h4>📋 基本信息</h4>
+                    <p>性别：${genderText} ${identityName ? '· 身份：' + identityName : ''} ${personalityName ? '· 性格：' + personalityName : ''}</p>
+                </div>
+
+                <div class="cc-detail-actions">
+                    ${isSelected 
+                        ? '<button class="cc-detail-btn cc-detail-btn-secondary" disabled style="opacity:0.5">当前使用中</button>' 
+                        : `<button class="cc-detail-btn cc-detail-btn-primary" onclick="useCharacterCard('${card.id}');closeCharacterCardDetail();">使用此角色</button>`
+                    }
+                    <button class="cc-detail-btn cc-detail-btn-secondary" onclick="closeCharacterCardDetail()">关闭</button>
+                </div>
+            `;
+
+            document.getElementById('ccDetailOverlay').style.display = 'flex';
+        }
+
+        function closeCharacterCardDetail() {
+            document.getElementById('ccDetailOverlay').style.display = 'none';
+        }
+
+        function renderCurrentCharacterCard() {
+            if (typeof characterCardManager === 'undefined') return;
+            const card = characterCardManager.getCurrentCard();
+            if (card) {
+                document.getElementById('ccCurrentAvatar').textContent = card.avatar;
+                document.getElementById('ccCurrentName').textContent = card.name;
+                document.getElementById('ccCurrentDesc').textContent = card.description || '暂无描述';
+            }
+        }
+
+        async function useCharacterCard(cardId) {
+            if (typeof companion === 'undefined' || typeof characterCardManager === 'undefined') return;
+            
+            try {
+                await companion.applyCharacterCard(cardId);
+                renderCurrentCharacterCard();
+                renderCharacterCardList();
+                closeCharacterCardManager();
+                showToast(`已切换到角色: ${characterCardManager.getCard(cardId)?.name}`);
+                
+                // 更新UI显示
+                updateHeaderAvatar();
+                loadGreeting();
+            } catch (err) {
+                console.error('切换角色卡失败:', err);
+                showToast('切换失败');
+            }
+        }
+
+        async function deleteCharacterCard(cardId) {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const card = characterCardManager.getCard(cardId);
+            if (!card) return;
+            
+            if (!confirm(`确定要删除角色卡 "${card.name}" 吗？`)) return;
+            
+            try {
+                characterCardManager.deleteCard(cardId);
+                renderCharacterCardList();
+                renderCurrentCharacterCard();
+                showToast('角色卡已删除');
+            } catch (err) {
+                console.error('删除角色卡失败:', err);
+                showToast(err.message || '删除失败');
+            }
+        }
+
+        function generateRandomCharacter() {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const card = characterCardManager.generateRandomCard();
+            renderCharacterCardList();
+            showToast(`已生成新角色: ${card.name}`);
+        }
+
+        async function saveCurrentAsCharacterCard() {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const name = prompt('请输入角色卡名称:', companion?.settings?.ai_name || '新角色');
+            if (!name) return;
+            
+            try {
+                const card = characterCardManager.saveCurrentAsCard(name, '自定义角色');
+                renderCurrentCharacterCard();
+                showToast(`已保存角色卡: ${card.name}`);
+            } catch (err) {
+                console.error('保存角色卡失败:', err);
+                showToast('保存失败');
+            }
+        }
+
+        function exportCurrentCharacter() {
+            if (typeof characterCardManager === 'undefined') return;
+            
+            const card = characterCardManager.getCurrentCard();
+            if (!card) {
+                showToast('没有可导出的角色');
+                return;
+            }
+            
+            const data = characterCardManager.exportCard(card.id);
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `character-${card.name}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('角色卡已导出');
+        }
+
+        function importCharacter() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    const card = characterCardManager.importCard(data);
+                    renderCharacterCardList();
+                    showToast(`已导入角色卡: ${card.name}`);
+                } catch (err) {
+                    console.error('导入角色卡失败:', err);
+                    showToast('导入失败: ' + err.message);
+                }
+            };
+            input.click();
         }
 
         // ===== 会话列表管理 =====
@@ -2514,30 +3688,70 @@
             });
         }
 
-        async function createNewSession() {
-            const name = prompt('给新助手起个名字：', '新助手');
-            if (!name) return;
+        // ===== Prompt Dialog =====
+        let promptCallback = null;
 
-            try {
-                const newId = await AICompanion.createSession(name);
-                await switchSession(newId);
-                await loadSessions();
-                showToast('新助手创建成功！');
-            } catch(err) {
-                console.error('Failed to create session:', err);
-                showToast('创建失败');
+        function showPromptDialog(title, defaultValue, callback) {
+            promptCallback = callback;
+            document.getElementById('promptTitle').textContent = title;
+            const input = document.getElementById('promptInput');
+            input.value = defaultValue || '';
+            input.focus();
+            input.select();
+            document.getElementById('promptOverlay').style.display = 'flex';
+            // Enter key support
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') confirmPromptDialog();
+                if (e.key === 'Escape') closePromptDialog();
+            };
+        }
+
+        function closePromptDialog() {
+            document.getElementById('promptOverlay').style.display = 'none';
+            if (promptCallback) {
+                promptCallback(null);
+                promptCallback = null;
             }
+        }
+
+        function confirmPromptDialog() {
+            const value = document.getElementById('promptInput').value.trim();
+            document.getElementById('promptOverlay').style.display = 'none';
+            if (promptCallback) {
+                promptCallback(value);
+                promptCallback = null;
+            }
+        }
+
+        async function createNewSession() {
+            showPromptDialog('给新助手起个名字：', '新助手', async (name) => {
+                if (!name) return;
+                try {
+                    const newId = await AICompanion.createSession(name);
+                    await switchSession(newId);
+                    await loadSessions();
+                    showToast('新助手创建成功！');
+                } catch(err) {
+                    console.error('Failed to create session:', err);
+                    showToast('创建失败');
+                }
+            });
         }
 
         // ===== 视图导航 =====
         function showListView() {
             document.getElementById('listView').style.display = 'flex';
             document.getElementById('chatView').style.display = 'none';
+            document.getElementById('groupListView').style.display = 'none';
+            document.getElementById('groupChatView').style.display = 'none';
         }
 
         function showChatView() {
             document.getElementById('listView').style.display = 'none';
             document.getElementById('chatView').style.display = 'flex';
+            document.getElementById('groupListView').style.display = 'none';
+            document.getElementById('groupChatView').style.display = 'none';
+            history.pushState({ view: 'chat' }, '', '');
         }
 
         async function goBackToList() {
@@ -2590,21 +3804,21 @@
         }
 
         async function renameSession(id, currentName) {
-            const newName = prompt('输入新名字：', currentName);
-            if (!newName || newName === currentName) return;
-
-            try {
-                await AICompanion.renameSession(id, newName);
-                if (id === sessionId) {
-                    currentSettings.ai_name = newName;
-                    updateHeaderDisplay();
+            showPromptDialog('输入新名字：', currentName, async (newName) => {
+                if (!newName || newName === currentName) return;
+                try {
+                    await AICompanion.renameSession(id, newName);
+                    if (id === sessionId) {
+                        currentSettings.ai_name = newName;
+                        updateHeaderDisplay();
+                    }
+                    await loadSessions();
+                    showToast('重命名成功');
+                } catch(err) {
+                    console.error('Failed to rename session:', err);
+                    showToast('重命名失败');
                 }
-                await loadSessions();
-                showToast('重命名成功');
-            } catch(err) {
-                console.error('Failed to rename session:', err);
-                showToast('重命名失败');
-            }
+            });
         }
 
         // ===== 加载本地聊天记录 =====
@@ -2672,6 +3886,12 @@
                 el.classList.toggle('selected', el.dataset.value === currentSettings.ai_gender);
             });
 
+            // Identity
+            document.querySelectorAll('#identitySelect .identity-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.value === (currentSettings.identity || 'none'));
+            });
+            updateIdentityDetail(currentSettings.identity || 'none');
+
             // Avatar
             const avatarPreview = document.getElementById('avatarPreviewLarge');
             if (currentSettings.ai_avatar_type === 'image' && currentSettings.ai_avatar) {
@@ -2711,6 +3931,12 @@
             document.querySelectorAll('#lengthGrid .card-item').forEach(el => {
                 el.classList.toggle('selected', el.dataset.value === currentSettings.reply_length);
             });
+
+            // Update version display
+            const versionText = document.getElementById('currentVersionText');
+            if (versionText && typeof updateManager !== 'undefined') {
+                versionText.textContent = 'v' + updateManager.getCurrentVersion();
+            }
         }
 
         function updateHeaderDisplay() {
@@ -2757,6 +3983,7 @@
                 companion.settings.ai_avatar = currentSettings.ai_avatar;
                 companion.settings.ai_avatar_type = currentSettings.ai_avatar_type;
                 companion.settings.relationship = currentSettings.relationship;
+                companion.settings.identity = currentSettings.identity || 'none';
                 companion.settings.user_name = currentSettings.user_nickname;
                 companion.settings.user_avatar = currentSettings.user_avatar;
                 companion.settings.user_avatar_type = currentSettings.user_avatar_type;
@@ -2957,6 +4184,53 @@
                 div.textContent = rel.icon ? (rel.icon + ' ' + rel.name) : rel.name;
                 container.appendChild(div);
             });
+        }
+
+        // ===== 加载身份定位列表 =====
+        function loadIdentities() {
+            const container = document.getElementById('identitySelect');
+            if (!container) return;
+            container.innerHTML = '';
+            // "默认"选项
+            const noneDiv = document.createElement('div');
+            noneDiv.className = 'identity-option' + (currentSettings.identity === 'none' ? ' selected' : '');
+            noneDiv.dataset.value = 'none';
+            noneDiv.onclick = function() { selectIdentity(this); };
+            noneDiv.innerHTML = '<span class="identity-avatar">🤖</span><span class="identity-name">默认</span><span class="identity-desc">不指定</span>';
+            container.appendChild(noneDiv);
+            // 身份列表
+            const list = typeof IDENTITY_TEMPLATES !== 'undefined' ? IDENTITY_TEMPLATES : [];
+            list.forEach(identity => {
+                const div = document.createElement('div');
+                div.className = 'identity-option' + (identity.id === currentSettings.identity ? ' selected' : '');
+                div.dataset.value = identity.id;
+                div.onclick = function() { selectIdentity(this); };
+                div.innerHTML = '<span class="identity-avatar">' + identity.avatar + '</span><span class="identity-name">' + identity.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() + '</span><span class="identity-desc">' + identity.description + '</span>';
+                container.appendChild(div);
+            });
+        }
+
+        function selectIdentity(el) {
+            el.parentElement.querySelectorAll('.identity-option').forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+            currentSettings.identity = el.dataset.value;
+            updateIdentityDetail(currentSettings.identity);
+            saveSettings();
+        }
+
+        function updateIdentityDetail(identityId) {
+            const panel = document.getElementById('identityDetailPanel');
+            if (!panel) return;
+            if (identityId === 'none') { panel.style.display = 'none'; return; }
+            const list = typeof IDENTITY_TEMPLATES !== 'undefined' ? IDENTITY_TEMPLATES : [];
+            const identity = list.find(i => i.id === identityId);
+            if (!identity) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            panel.innerHTML = '<h4>' + identity.avatar + ' ' + identity.name.replace(/^[^\u4e00-\u9fa5]+/, '').trim() + '</h4>' +
+                '<div class="identity-detail-item"><strong>职业：</strong>' + identity.profession + '</div>' +
+                '<div class="identity-detail-item"><strong>性格：</strong>' + identity.personality_traits.join('、') + '</div>' +
+                '<div class="identity-detail-item"><strong>专长：</strong>' + identity.expertise_areas.join('、') + '</div>' +
+                '<div class="identity-detail-item"><strong>说话风格：</strong>' + identity.speaking_style + '</div>';
         }
 
         // ===== Load Personalities =====
@@ -3578,6 +4852,7 @@
             document.getElementById('chatView').style.display = 'none';
             document.getElementById('groupListView').style.display = 'flex';
             document.getElementById('groupChatView').style.display = 'none';
+            history.pushState({ view: 'grouplist' }, '', '');
             loadGroupList();
         }
 
@@ -3586,6 +4861,7 @@
             document.getElementById('chatView').style.display = 'none';
             document.getElementById('groupListView').style.display = 'none';
             document.getElementById('groupChatView').style.display = 'flex';
+            history.pushState({ view: 'groupchat' }, '', '');
         }
 
         async function goBackToGroupList() {
@@ -3608,18 +4884,52 @@
             groups.forEach(g => {
                 const div = document.createElement('div');
                 div.className = 'session-item';
-                div.onclick = () => openGroupChat(g.id);
                 div.innerHTML = `
-                    <div class="session-avatar" style="font-size:20px;">👥</div>
-                    <div class="session-info">
+                    <div class="session-avatar" style="font-size:20px;" onclick="event.stopPropagation();openGroupChat('${g.id}')">👥</div>
+                    <div class="session-info" onclick="event.stopPropagation();openGroupChat('${g.id}')">
                         <div class="session-name-row">
                             <span class="session-name">${g.name}</span>
                         </div>
                         <div class="session-preview">${g.member_count}人 · ${g.last_message || '暂无消息'}</div>
                     </div>
+                    <div class="session-actions">
+                        <button class="session-action-btn" onclick="event.stopPropagation();renameGroup('${g.id}', '${g.name.replace(/'/g, "\\'")}')" title="重命名">✏️</button>
+                        <button class="session-action-btn" onclick="event.stopPropagation();deleteGroup('${g.id}')" title="删除">🗑️</button>
+                    </div>
                 `;
                 container.appendChild(div);
             });
+        }
+
+        // 重命名群聊
+        async function renameGroup(groupId, currentName) {
+            showPromptDialog('输入新群聊名称：', currentName, async (newName) => {
+                if (!newName || newName === currentName) return;
+                try {
+                    await GroupChat.renameGroup(groupId, newName);
+                    await loadGroupList();
+                    showToast('群聊已重命名');
+                } catch(err) {
+                    console.error('Failed to rename group:', err);
+                    showToast('重命名失败');
+                }
+            });
+        }
+
+        // 删除群聊
+        async function deleteGroup(groupId) {
+            if (!confirm('确定要删除这个群聊吗？所有聊天记录将丢失！')) return;
+            try {
+                await GroupChat.deleteGroup(groupId);
+                if (currentGroupId === groupId) {
+                    goBackToGroupList();
+                }
+                await loadGroupList();
+                showToast('群聊已删除');
+            } catch(err) {
+                console.error('Failed to delete group:', err);
+                showToast('删除失败');
+            }
         }
 
         // 创建群聊
@@ -3660,15 +4970,15 @@
                     </div>
                 `;
 
-                document.getElementById('groupNameInput').oninput = (e) => { groupName = e.target.value; };
-                document.getElementById('cancelGroupBtn').onclick = () => { document.body.removeChild(overlay); };
-                document.getElementById('confirmGroupBtn').onclick = async () => {
+                panel.querySelector('#groupNameInput').oninput = (e) => { groupName = e.target.value; };
+                panel.querySelector('#cancelGroupBtn').onclick = () => { document.body.removeChild(overlay); };
+                panel.querySelector('#confirmGroupBtn').onclick = async () => {
                     const finalIds = window.__sel || [];
                     if (finalIds.length === 0) {
                         showToast('请至少选择一个AI');
                         return;
                     }
-                    groupName = document.getElementById('groupNameInput').value.trim() || '新群聊';
+                    groupName = panel.querySelector('#groupNameInput').value.trim() || '新群聊';
                     const memberSessions = sessions.filter(s => finalIds.includes(s.id));
                     const newId = await GroupChat.createGroup(groupName, memberSessions);
                     document.body.removeChild(overlay);
@@ -3716,13 +5026,14 @@
         function appendGroupMessage(msg) {
             const chatArea = document.getElementById('groupChatArea');
             const div = document.createElement('div');
+            const content = highlightMentions(escapeHtml(msg.content || ''));
             
             if (msg.role === 'user') {
                 div.className = 'message group-user';
                 div.innerHTML = `
                     <div class="msg-avatar">${msg.senderAvatar || '😊'}</div>
                     <div>
-                        <div class="msg-content">${escapeHtml(msg.content || '')}</div>
+                        <div class="msg-content">${content}</div>
                     </div>
                 `;
             } else {
@@ -3731,12 +5042,24 @@
                     <div class="msg-avatar">${msg.senderAvatar || '🤖'}</div>
                     <div>
                         <div class="msg-sender-name">${msg.senderName || 'AI'}</div>
-                        <div class="msg-content">${escapeHtml(msg.content || '')}</div>
+                        <div class="msg-content">${content}</div>
                     </div>
                 `;
             }
 
             chatArea.appendChild(div);
+        }
+
+        // 高亮 @mention 文本
+        function highlightMentions(text) {
+            if (!currentGroup || !currentGroup.members) return text;
+            let result = text;
+            for (const m of currentGroup.members) {
+                const escaped = escapeHtml(m.name);
+                const pattern = new RegExp(`@${escaped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+                result = result.replace(pattern, `<span class="msg-mention">@${escaped}</span>`);
+            }
+            return result;
         }
 
         function scrollGroupToBottom() {
@@ -3882,14 +5205,202 @@
 
         // 群聊输入键盘事件
         function handleGroupInputKeydown(event) {
+            // 关闭 mention 面板
+            const panel = document.getElementById('mentionPanel');
+            if (panel && panel.classList.contains('show')) {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    moveMentionSelection(1);
+                    return;
+                }
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    moveMentionSelection(-1);
+                    return;
+                }
+                if (event.key === 'Tab' || event.key === 'Enter') {
+                    event.preventDefault();
+                    const sel = panel.querySelector('.mention-item.selected');
+                    if (sel) {
+                        insertMention(sel.dataset.name, sel.dataset.avatar);
+                    }
+                    closeMentionPanel();
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeMentionPanel();
+                    return;
+                }
+            }
+
+            // Enter 发送
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
+                if (panel && panel.classList.contains('show')) return;
                 sendGroupMessage();
             }
         }
 
+        function handleGroupInputChange(event) {
+            autoResize(event.target);
+            // 检测 @ 号触发 mention 面板
+            const input = event.target;
+            const cursorPos = input.selectionStart;
+            const textBeforeCursor = input.value.substring(0, cursorPos);
+            const atMatch = textBeforeCursor.match(/@([\u4e00-\u9fa5\w]*)$/);
+            if (atMatch) {
+                showMentionPanel(atMatch[1]);
+            } else {
+                closeMentionPanel();
+            }
+        }
+
+        function showMentionPanel(filter) {
+            if (!currentGroup || !currentGroup.members.length) return;
+            const panel = document.getElementById('mentionPanel');
+            const backdrop = document.getElementById('mentionBackdrop');
+            const listEl = document.getElementById('mentionItemList');
+            if (!listEl) return;
+            const members = currentGroup.members;
+            const lf = filter.toLowerCase();
+            const filtered = members.filter(m => 
+                !lf || m.name.toLowerCase().includes(lf) || 
+                (m.personality || '').toLowerCase().includes(lf) ||
+                (m.relationship || '').toLowerCase().includes(lf)
+            );
+            if (filtered.length === 0) { closeMentionPanel(); return; }
+
+            listEl.innerHTML = filtered.map((m, i) => `
+                <div class="mention-item ${i === 0 ? 'selected' : ''}" data-name="${escapeHtml(m.name)}" data-avatar="${escapeHtml(m.avatar)}" onclick="insertMention('${escapeHtml(m.name)}','${escapeHtml(m.avatar)}');closeMentionPanel()">
+                    <span class="m-avatar">${m.avatar || '🌟'}</span>
+                    <div class="m-info">
+                        <div class="m-name">${escapeHtml(m.name)}</div>
+                        <div class="m-role">${escapeHtml(m.relationship || 'AI 成员')}</div>
+                    </div>
+                </div>
+            `).join('');
+            panel.classList.add('show');
+            if (backdrop) backdrop.classList.add('show');
+        }
+
+        function moveMentionSelection(dir) {
+            const listEl = document.getElementById('mentionItemList');
+            const items = listEl.querySelectorAll('.mention-item');
+            let idx = -1;
+            items.forEach((item, i) => { if (item.classList.contains('selected')) idx = i; });
+            items.forEach(item => item.classList.remove('selected'));
+            const newIdx = ((idx + dir) % items.length + items.length) % items.length;
+            items[newIdx].classList.add('selected');
+            items[newIdx].scrollIntoView({ block: 'nearest' });
+        }
+
+        function closeMentionPanel() {
+            const panel = document.getElementById('mentionPanel');
+            const backdrop = document.getElementById('mentionBackdrop');
+            const listEl = document.getElementById('mentionItemList');
+            if (panel) panel.classList.remove('show');
+            if (backdrop) backdrop.classList.remove('show');
+            if (listEl) listEl.innerHTML = '';
+        }
+
+        function insertMention(name, avatar) {
+            const input = document.getElementById('groupMessageInput');
+            const cursorPos = input.selectionStart;
+            const textBefore = input.value.substring(0, cursorPos);
+            const textAfter = input.value.substring(cursorPos);
+            // 替换最后一个 @xxx 为 @name 
+            const beforeReplaced = textBefore.replace(/@[\u4e00-\u9fa5\w]*$/, '@' + name + ' ');
+            input.value = beforeReplaced + textAfter;
+            // 光标放到 @name  之后
+            const newPos = beforeReplaced.length;
+            input.setSelectionRange(newPos, newPos);
+            input.focus();
+            autoResize(input);
+        }
+
+        // ===== 系统返回键处理 =====
+        function handleBackButton() {
+            // 设置面板打开 → 关闭设置
+            const settingsPanel = document.getElementById('settingsPanel');
+            const settingsOverlay = document.getElementById('settingsOverlay');
+            if (settingsPanel && settingsPanel.classList.contains('open')) {
+                toggleSettings();
+                return;
+            }
+            // Prompt 对话框打开 → 关闭
+            const promptOverlay = document.getElementById('promptOverlay');
+            if (promptOverlay && promptOverlay.style.display === 'flex' && promptOverlay.style.display !== 'none') {
+                closePromptDialog();
+                return;
+            }
+            // Mention 面板打开 → 关闭
+            const mentionPanel = document.getElementById('mentionPanel');
+            if (mentionPanel && mentionPanel.classList.contains('show')) {
+                closeMentionPanel();
+                return;
+            }
+            // 群聊页 → 返回群聊列表
+            const groupChatView = document.getElementById('groupChatView');
+            if (groupChatView && groupChatView.style.display === 'flex') {
+                goBackToGroupList();
+                return;
+            }
+            // 聊天页 → 返回会话列表
+            const chatView = document.getElementById('chatView');
+            if (chatView && chatView.style.display === 'flex') {
+                goBackToList();
+                return;
+            }
+            // 群聊列表 → 返回会话列表
+            const groupListView = document.getElementById('groupListView');
+            if (groupListView && groupListView.style.display === 'flex') {
+                showListView();
+                return;
+            }
+            // 已到根页面 → 退出（仅在 Capacitor 中）
+            if (window.Capacitor) {
+                try { window.Capacitor.App.exitApp(); } catch(e) {}
+            }
+        }
+
+        // 注册 Capacitor 返回键监听
+        window.addEventListener('capacitorBackButton', (e) => {
+            e.preventDefault();
+            handleBackButton();
+        });
+
+        // 同时监听 popstate（浏览器返回 / 手势返回）
+        let backStateIdx = 0;
+        window.addEventListener('popstate', (e) => {
+            handleBackButton();
+        });
+
+        // ===== 页面恢复时滚动优化 =====
+        window.addEventListener('resize', () => {
+            // 键盘弹出/收起时，重新计算输入位置
+            const inputs = document.querySelectorAll('textarea:focus, input:focus');
+            if (inputs.length > 0) {
+                setTimeout(() => {
+                    inputs[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }, 150);
+            }
+        });
+
         // ===== Start =====
         document.addEventListener('DOMContentLoaded', init);
     </script>
+    <!-- Prompt Dialog -->
+    <div class="prompt-overlay" id="promptOverlay" style="display:none;">
+        <div class="prompt-dialog">
+            <div class="prompt-dialog-title" id="promptTitle"></div>
+            <input type="text" class="prompt-dialog-input" id="promptInput" placeholder="" />
+            <div class="prompt-dialog-btns">
+                <button class="prompt-dialog-btn cancel" onclick="closePromptDialog()">取消</button>
+                <button class="prompt-dialog-btn confirm" onclick="confirmPromptDialog()">确定</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
