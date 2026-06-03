@@ -159,118 +159,50 @@ class UpdateManager {
         return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
 
-    // 下载并安装
+    // 下载并安装（通过系统浏览器下载）
     async downloadAndInstall(updateInfo, onProgress) {
         if (!updateInfo.downloadUrl) {
             throw new Error('下载链接不可用');
         }
 
-        this.downloadAbortController = new AbortController();
-
+        // GitHub Release 下载链接会 302 重定向到 Azure CDN，
+        // 重定向响应不带 Access-Control-Allow-Origin，浏览器 fetch() 会被 CORS 拦截。
+        // 因此必须通过系统浏览器打开下载链接，让系统原生处理下载。
         try {
-            // 使用fetch下载
-            const response = await fetch(updateInfo.downloadUrl, {
-                signal: this.downloadAbortController.signal,
-                headers: {
-                    'Accept': 'application/vnd.android.package-archive'
-                }
-            });
+            // 报告"准备下载"进度
+            if (onProgress) onProgress(10, 0, 0);
 
-            if (!response.ok) {
-                throw new Error(`下载失败: ${response.status}`);
-            }
-
-            const totalSize = parseInt(response.headers.get('content-length')) || updateInfo.fileSize || 0;
-            const reader = response.body.getReader();
-            
-            let receivedSize = 0;
-            const chunks = [];
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                chunks.push(value);
-                receivedSize += value.length;
-                
-                // 报告进度
-                const progress = totalSize > 0 ? Math.round((receivedSize / totalSize) * 100) : 0;
-                if (onProgress) onProgress(progress, receivedSize, totalSize);
-            }
-
-            // 合并chunks并转换为base64
-            const blob = new Blob(chunks);
-            const arrayBuffer = await blob.arrayBuffer();
-            const base64Data = this.arrayBufferToBase64(arrayBuffer);
-
-            // 保存到文件系统
-            let fileUri;
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-                const { Filesystem, Directory } = window.Capacitor.Plugins.Filesystem;
-                const fileName = `ai-companion-update-${Date.now()}.apk`;
-                
-                await Filesystem.writeFile({
-                    path: fileName,
-                    data: base64Data,
-                    directory: Directory.Cache,
-                    recursive: true
+            // 方案1：尝试用 Capacitor Browser 插件打开
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+                await window.Capacitor.Plugins.Browser.open({ 
+                    url: updateInfo.downloadUrl,
+                    presentationStyle: 'popover'
                 });
-
-                const result = await Filesystem.getUri({
-                    path: fileName,
-                    directory: Directory.Cache
-                });
-
-                fileUri = result.uri;
             } else {
-                // Web环境：创建blob URL
-                const blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
-                fileUri = URL.createObjectURL(blob);
+                // 方案2：用系统浏览器打开下载链接
+                const win = window.open(updateInfo.downloadUrl, '_system');
+                if (!win) {
+                    // 弹窗被拦截，尝试用 location 跳转
+                    window.location.href = updateInfo.downloadUrl;
+                }
             }
 
-            // 调用安装
-            await this.installApk(fileUri);
+            // 报告下载已触发
+            if (onProgress) onProgress(100, 0, 0);
 
-            return { success: true };
+            return { 
+                success: true, 
+                note: '已打开下载链接，请在浏览器中下载完成后点击通知安装' 
+            };
 
         } catch (error) {
-            if (error.name === 'AbortError') {
-                throw new Error('下载已取消');
-            }
-            throw error;
+            throw new Error('打开下载链接失败: ' + error.message);
         }
     }
 
-    // ArrayBuffer转Base64
-    arrayBufferToBase64(buffer) {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary);
-    }
-
-    // 安装APK
-    async installApk(fileUri) {
-        // 使用自定义插件
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppUpdate) {
-            await window.Capacitor.Plugins.AppUpdate.installApk({ fileUri });
-        } else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
-            // 备用：使用浏览器打开
-            await window.Capacitor.Plugins.Browser.open({ url: fileUri });
-        } else {
-            // Web环境：直接打开
-            window.open(fileUri, '_blank');
-        }
-    }
-
-    // 取消下载
+    // 取消下载（系统浏览器下载无法取消，仅清理状态）
     cancelDownload() {
-        if (this.downloadAbortController) {
-            this.downloadAbortController.abort();
-            this.downloadAbortController = null;
-        }
+        this.downloadAbortController = null;
     }
 
     // 忽略此版本

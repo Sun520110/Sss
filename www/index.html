@@ -3331,7 +3331,7 @@
             }
         }
 
-        // 开始更新
+        // 开始更新（通过系统浏览器下载）
         async function startUpdate() {
             if (!currentUpdateInfo) return;
             
@@ -3341,27 +3341,24 @@
             const progressText = document.getElementById('updateProgressText');
             
             actionBtn.disabled = true;
-            actionBtn.textContent = '下载中...';
+            actionBtn.textContent = '打开中...';
             progressDiv.style.display = 'block';
+            progressFill.style.width = '100%';
+            progressText.textContent = '正在打开下载链接...';
             
             try {
-                await updateManager.downloadAndInstall(currentUpdateInfo, (progress, received, total) => {
-                    progressFill.style.width = progress + '%';
-                    const sizeText = total > 0 ? ` (${updateManager.formatFileSize(received)}/${updateManager.formatFileSize(total)})` : '';
-                    progressText.textContent = progress + '%' + sizeText;
-                });
+                const result = await updateManager.downloadAndInstall(currentUpdateInfo);
                 
-                // 下载完成
-                progressText.textContent = '下载完成，正在安装...';
-                showToast('更新下载完成，请安装');
+                if (result.success) {
+                    progressText.textContent = '已打开下载页面，请在浏览器中下载 APK 后点击通知安装';
+                    showToast('已跳转至下载页面');
+                    // 2秒后关闭弹窗
+                    setTimeout(() => closeUpdateModal(), 2500);
+                }
                 
             } catch (err) {
-                if (err.message === '下载已取消') {
-                    progressText.textContent = '下载已取消';
-                } else {
-                    progressText.textContent = '下载失败: ' + err.message;
-                    progressText.style.color = '#f5576c';
-                }
+                progressText.textContent = '打开失败: ' + err.message;
+                progressText.style.color = '#f5576c';
                 actionBtn.disabled = false;
                 actionBtn.textContent = '重试';
             }
