@@ -72,3 +72,36 @@ temp
 # Backup files
 *.backup
 *.backup.*
+
+# Build artifacts (keep only source)
+AI-Companion-*-debug.apk
+AI-Companion-*-release.apk
+app-release-unsigned.apk
+
+# Python/Flask (if added back in future)
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# IDE specific
+*.iml
+*.ipr
+*.iws
+
+# Windows
+*.lnk
+Desktop.ini
+
+# Trae/SOLO specific
+.trae/
+.uploads/
+
+# Local development
+.env.*.local
+coverage/
+.nyc_output/
