@@ -3559,11 +3559,21 @@
         }
 
         function generateRandomCharacter() {
-            if (typeof characterCardManager === 'undefined') return;
+            if (typeof characterCardManager === 'undefined') {
+                console.error('characterCardManager 未定义');
+                showToast('角色卡管理器未初始化');
+                return;
+            }
             
-            const card = characterCardManager.generateRandomCard();
-            renderCharacterCardList();
-            showToast(`已生成新角色: ${card.name}`);
+            try {
+                const card = characterCardManager.generateRandomCard();
+                console.log('[角色卡] 生成成功:', card);
+                renderCharacterCardList();
+                showToast(`已生成新角色: ${card.name}`);
+            } catch (err) {
+                console.error('[角色卡] 生成失败:', err);
+                showToast('生成失败: ' + err.message);
+            }
         }
 
         async function saveCurrentAsCharacterCard() {

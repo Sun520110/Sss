@@ -36,16 +36,25 @@ class UpdateManager {
             }
             console.log('[Update] 当前版本:', this.currentVersion, 'versionCode:', this.currentVersionCode);
         } catch (error) {
-            console.error('[Update] 初始化失败:', error);
-            // 使用默认值
-            this.currentVersion = '1.2.0';
-            this.currentVersionCode = 4;
+            console.error('[Update] 初始化失败，尝试从version.json加载:', error);
+            // 最后回退：从version.json获取
+            try {
+                const response = await fetch('static/version.json?v=' + Date.now());
+                const data = await response.json();
+                this.currentVersion = data.version;
+                this.currentVersionCode = data.versionCode;
+            } catch (e2) {
+                console.error('[Update] version.json加载也失败:', e2);
+                // 使用编译时的默认值
+                this.currentVersion = '1.3.1';
+                this.currentVersionCode = 6;
+            }
         }
     }
 
     // 获取当前版本字符串（用于显示）
     getCurrentVersion() {
-        return this.currentVersion || '1.2.0';
+        return this.currentVersion || '1.3.1';
     }
 
     // 检查是否需要检查更新（基于冷却时间）
