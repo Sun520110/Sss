@@ -3028,8 +3028,8 @@
     </div>
 
     <!-- Character Card Detail Overlay -->
-    <div class="cc-detail-overlay" id="ccDetailOverlay" style="display:none;">
-        <div class="cc-detail-panel" id="ccDetailPanel">
+    <div class="cc-detail-overlay" id="ccDetailOverlay" style="display:none;" onclick="if(event.target === this) closeCharacterCardDetail();">
+        <div class="cc-detail-panel" id="ccDetailPanel" onclick="event.stopPropagation();">
             <!-- 由JS动态填充 -->
         </div>
     </div>
@@ -3453,6 +3453,7 @@
                         <div class="cc-detail-name">${card.name}</div>
                         <div class="cc-detail-desc">${card.description || '暂无描述'}</div>
                     </div>
+                    <button class="cc-detail-close" onclick="closeCharacterCardDetail()" style="position:absolute;top:10px;right:15px;background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
                 </div>
 
                 ${card.backstory ? `
@@ -5396,6 +5397,16 @@
 
         // ===== Start =====
         document.addEventListener('DOMContentLoaded', init);
+        
+        // ESC 键关闭角色卡详情
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const overlay = document.getElementById('ccDetailOverlay');
+                if (overlay && overlay.style.display !== 'none') {
+                    closeCharacterCardDetail();
+                }
+            }
+        });
     </script>
     <!-- Prompt Dialog -->
     <div class="prompt-overlay" id="promptOverlay" style="display:none;">
